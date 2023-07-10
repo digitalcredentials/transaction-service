@@ -1,47 +1,27 @@
-# Example Isomorphic TS/JS Lib Template _(@digitalcredentials/isomorphic-lib-template)_
+# Transaction Manager Service _(@digitalcredentials/transaction-manager-service)_
 
-[![Build status](https://img.shields.io/github/actions/workflow/status/digitalcredentials/isomorphic-lib-template/main.yml?branch=main)](https://github.com/digitalcredentials/isomorphic-lib-template/actions?query=workflow%3A%22Node.js+CI%22)
-[![NPM Version](https://img.shields.io/npm/v/@digitalcredentials/isomorphic-lib-template.svg)](https://npm.im/@digitalcredentials/isomorphic-lib-template)
-
-> A Typescript/Javascript isomorphic library template, for use in the browser, Node.js, and React Native.
+> Express app for managing challenges used by DIDAuth transactions
 
 ## Table of Contents
 
 - [Background](#background)
-- [Security](#security)
-- [Install](#install)
 - [Usage](#usage)
 - [Contribute](#contribute)
 - [License](#license)
 
 ## Background
 
-TBD
+Express app that generates and verifies UUID challenges. Use as you like, but intended to be used to with the [DCC Exchange Coordinator](https://github.com/digitalcredentials/exchange-coordinator) to manage the challenges in the Wallet/Issuer DIDAuth exchange.
 
-## Security
-
-TBD
-
-## Install
-
-- Node.js 16+ is recommended.
-
-### NPM
-
-To install via NPM:
-
-```
-npm install @digitalcredentials/isomorphic-lib-template
-```
-
-### Development
+## Development
 
 To install locally (for development):
 
 ```
-git clone https://github.com/digitalcredentials/isomorphic-lib-template.git
-cd isomorphic-lib-template
+git clone https://github.com/digitalcredentials/transaction-manager-service.git
+cd transaction-manager-service
 npm install
+npm dev
 ```
 
 ## Usage
