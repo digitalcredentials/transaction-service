@@ -1,12 +1,12 @@
 import express from 'express';
 import logger from 'morgan';
 import cors from 'cors';
-import { initializeTransactionManager, createTransaction, verifyTransaction } from './transactionManager.js';
+import { initializeTransactionManager, setupExchange, retrieveStoredData, getVPR } from './transactionManager.js';
 
 export async function build(opts = {}) {
 
     await initializeTransactionManager()
-    
+
     var app = express();
 
     app.use(logger('dev'));
@@ -18,29 +18,63 @@ export async function build(opts = {}) {
         res.send({ message: 'transaction-manager-service server status: ok.' })
     });
 
-    app.post("/create", 
+    /*
+    This is step 1 in an exchange.
+    Creates a new exchange and stores the provided data
+    for later use in the exchange, in particular the subject data
+    with which to later construct the VC.
+    Returns a walletQuery object with both deeplinks
+    with which to trigger wallet selection that in turn
+    will trigger the exchange when the wallet opens.
+    */
+    app.post("/exchange",
         async (req, res) => {
             try {
                 const data = req.body;
-                const challenge = await createTransaction(data)
-                return res.json(challenge)
+                const walletQuery = await setupExchange(data)
+                return res.json(walletQuery)
             } catch (error) {
                 console.log(error);
-                return res.status(403).json(error);
+                return res.status(error.code || 500).json(error);
             }
         })
 
-      app.get("/verify", 
+   /*
+    This is step 2 in an exchange, where the wallet
+    has asked to initiate the exchange, and we reply
+    here with a Verifiable Presentation Request, asking
+    for a DIDAuth. Note that in some scenarios the wallet
+    may skip this step and directly present the DIDAuth.
+   */
+    app.post("/exchange/:exchangeId",
         async (req, res) => {
             try {
-                const challenge = req.query.challenge 
-                const data = await verifyTransaction(challenge)
-                return res.json(data)      
+                const vpr = await getVPR(req.params.exchangeId)
+                return res.json(vpr)
             } catch (error) {
                 console.log(error);
-                return res.status(500).json(error);
+                return res.status(error.code || 500).json(error);
             }
         })
+
+     /*
+    This is step 3 in an exchange, where we verify the
+    supplied DIDAuth, and if verified we return the previously 
+    stored data for the exchange.
+    */
+    app.post("/exchange/:exchangeId/:transactionId", 
+        async (req, res) => {
+            try {
+                const didAuth = req.body
+                const data = await retrieveStoredData(req.params.exchangeId, req.params.transactionId, didAuth)
+                return res.json(data)
+            } catch (error) {
+                console.log(error);
+                return res.status(error.code || 500).json(error);
+            }
+        })
+
+
     return app;
 
 }
