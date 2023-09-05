@@ -24,7 +24,8 @@ export const initializeTransactionManager = () => {
  */
 export const setupExchange = async (data) => {
   
-  // throws an ExchangeError if incomplete
+  // Throws an ExchangeError if exchange data is incomplete.
+  // The error bubbles up to the express handler
   verifyExchangeData(data)
   
   data.transactionId = crypto.randomUUID()
@@ -32,11 +33,12 @@ export const setupExchange = async (data) => {
 
   await keyv.set(data.exchangeId, data, expiresAfter);
 
-  //const vprDeepLink = deeplink that calls /exchanges/${exchangeId} to initiate the exchange
-  // and get back a VPR to which to then send the DIDAuth.
   // directDeepLink bypasses the VPR step and assumes the wallet knows to send a DIDAuth.
-  const directDeepLink = `https://lcw.app/request.html?issuer=https://testIssuer.edu&challenge=${data.transactionId}&vc_request_url=${data.exchangeHost}/exchange/${data.exchangeId}/${data.transactionId}`
-  const vprDeepLink = `https://lcw.app/request.html?vc_request_url=${data.exchangeHost}/exchange/${data.exchangeId}`
+  const directDeepLink = `https://lcw.app/request.html?issuer=issuer.example.com&auth_type=bearer&challenge=${data.transactionId}&vc_request_url=${data.exchangeHost}/exchange/${data.exchangeId}/${data.transactionId}`
+  
+  //vprDeepLink = deeplink that calls /exchanges/${exchangeId} to initiate the exchange
+  // and get back a VPR to which to then send the DIDAuth.
+  const vprDeepLink = `https://lcw.app/request.html?issuer=issuer.example.com&auth_type=bearer&vc_request_url=${data.exchangeHost}/exchange/${data.exchangeId}`
   return [
     { type: "directDeepLink", url: directDeepLink },
     { type: "vprDeepLink", url: vprDeepLink }
