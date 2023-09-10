@@ -1,6 +1,8 @@
 # Transaction Manager Service _(@digitalcredentials/transaction-manager-service)_
 
-> Express app for managing the transactions used in VC-API exchanges
+[![Build status](https://img.shields.io/github/actions/workflow/status/digitalcredentials/transaction-service/main.yml?branch=main)](https://github.com/digitalcredentials/transaction-service/actions?query=workflow%3A%22Node.js+CI%22)
+
+> Express app for managing the transactions used in [VC-API exchanges](https://w3c-ccg.github.io/vc-api/#initiate-exchange).
 
 ## Table of Contents
 
@@ -43,6 +45,12 @@ Initializes the exchange. Expects an object containing the data that will later 
  The endpoint stores the data in a key/value store along with newly generated UUIDs for the exchangeId, transactionId and a challenge to be used later for a DIDAuth request.
 
  The endpoint returns an object with two options for opening a wallet: a custom deeplink that will open the Learner Credential Wallet and a CHAPI request that can be used to open a CHAPI enabled wallet.
+
+ The object will look something like so:
+
+ ```json
+
+ ```
 
 * POST /exchange/{exchangeId}
 

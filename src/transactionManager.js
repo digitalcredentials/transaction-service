@@ -41,12 +41,45 @@ export const setupExchange = async (data) => {
   const vprDeepLink = `https://lcw.app/request.html?issuer=issuer.example.com&auth_type=bearer&vc_request_url=${data.exchangeHost}/exchange/${data.exchangeId}`
   return [
     { type: "directDeepLink", url: directDeepLink },
-    { type: "vprDeepLink", url: vprDeepLink }
-    // LATER:  {type: "chapi", query: ""}
+    { type: "vprDeepLink", url: vprDeepLink },
+    { type: "chapi", query: getDIDAuthVPR(data.exchangeId)}
   ]
 }
 
+
 /**
+ * This returns the vpr as described in the
+ *  "Integrating with the VC-API Exchanges workflow" section of:
+ * https://chapi.io/developers/playgroundfaq/
+ */
+export const getDIDAuthVPR = async (exchangeId) => {
+  const exchangeData = await getExchangeData(exchangeId)
+  return {
+    "query": {
+      "type": "DIDAuthentication"
+    },
+    "interact": {
+      "service": [
+        {
+          "type": "VerifiableCredentialApiExchangeService",
+          "serviceEndpoint": `${exchangeData.exchangeHost}/exchange/${exchangeData.exchangeId}/${exchangeData.transactionId}`
+       //   "serviceEndpoint": "https://playground.chapi.io/exchanges/eyJjcmVkZW50aWFsIjoiaHR0cHM6Ly9wbGF5Z3JvdW5kLmNoYXBpLmlvL2V4YW1wbGVzL2pmZjIvamZmMi5qc29uIiwiaXNzdWVyIjoiZGIvdmMifQ/esOGVHG8d44Q"
+        },
+        {
+          "type": "CredentialHandlerService"
+        }
+      ]
+    },
+    "challenge": exchangeData.transactionId,
+    "domain": exchangeData.exchangeHost,
+  }
+}
+
+/**
+ * 
+ * This is the "old" version of the vpr, which might have been superseded by the above vpr,
+ * at least as described in the "Integrating with the VC-API Exchanges workflow" section of:
+ * https://chapi.io/developers/playgroundfaq/
 * @param {string} exchangeId
 * @returns returns a verifiable presentation request for DIDAuth
 */

@@ -15,7 +15,7 @@ export async function build(opts = {}) {
     app.use(cors())
 
     app.get('/', function (req, res, next) {
-        res.send({ message: 'transaction-manager-service server status: ok.' })
+        res.send({ message: 'transaction-service server status: ok.' })
     });
 
     /*
@@ -31,6 +31,7 @@ export async function build(opts = {}) {
         async (req, res) => {
             try {
                 const data = req.body;
+                if (!data || !Object.keys(data).length) return res.status(400).send({code: 400, message: 'No data was provided in the body.'})
                 const walletQuery = await setupExchange(data)
                 return res.json(walletQuery)
             } catch (error) {
