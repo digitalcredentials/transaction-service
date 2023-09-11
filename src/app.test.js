@@ -1,6 +1,7 @@
 import { expect } from 'chai'
 import request from 'supertest';
 import { build } from './app.js';
+import { getDataForExchangeSetupPost } from './test-fixtures/testData.js';
 
 let app
 
@@ -37,7 +38,17 @@ describe('api', () => {
         .expect(400, done)
     })
 
+    it('returns array of wallet queries', async () => {
+      const testData = getDataForExchangeSetupPost('test')
+      const response = await request(app)
+        .post("/exchange")
+        .send(testData)
 
+      expect(response.header["content-type"]).to.have.string("json");
+      expect(response.status).to.eql(200);
+      expect(response.body)
+      expect(response.body.length).to.eql(testData.data.length)
+    })
    
     
 

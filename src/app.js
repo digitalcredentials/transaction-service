@@ -32,8 +32,8 @@ export async function build(opts = {}) {
             try {
                 const data = req.body;
                 if (!data || !Object.keys(data).length) return res.status(400).send({code: 400, message: 'No data was provided in the body.'})
-                const walletQuery = await setupExchange(data)
-                return res.json(walletQuery)
+                const walletQuerys = await setupExchange(data)
+                return res.json(walletQuerys)
             } catch (error) {
                 console.log(error);
                 return res.status(error.code || 500).json(error);
