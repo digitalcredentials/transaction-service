@@ -3,13 +3,32 @@
  */
 import crypto from 'crypto';
 import Keyv from 'keyv';
+import {KeyvFile} from 'keyv-file'
 import { verifyDIDAuth } from './didAuth.js';
 
+const persistToFile = process.env.PERSIST_TO_FILE
+const defaultTimeToLive = process.env.DEFAULT_TTL = 1000 * 60 * 10; // keyv entry expires after ten minutes
+
 let keyv;
-const expiresAfter = 1000 * 60 * 10; // keyv entry expires after ten minutes
+
 
 export const initializeTransactionManager = () => {
-  if (!keyv) keyv = new Keyv();
+  if (!keyv) {
+    if (persistToFile) {
+      keyv = new Keyv({
+        store: new KeyvFile({
+          filename: persistToFile, // the file path to store the data
+          expiredCheckDelay: 4 * 3600 * 1000, // ms (so every 4 hours) how often to check for and remove expired records
+          writeDelay: 100, // ms, batch write to disk in a specific duration, enhance write performance.
+          encode: JSON.stringify, // serialize function
+          decode: JSON.parse // deserialize function
+        })
+      })
+    } else {
+      keyv = new Keyv();
+    }
+  }
+
 }
 
 /**
@@ -70,8 +89,9 @@ const getProcessRecordFnForExchangeHostAndTenant = (exchangeHost, tenantName) =>
     record.exchangeHost = exchangeHost
     record.transactionId = crypto.randomUUID()
     record.exchangeId = crypto.randomUUID()
-
-    await keyv.set(record.exchangeId, record, expiresAfter);
+    
+    const timeToLive = record.timeToLive || defaultTimeToLive
+    await keyv.set(record.exchangeId, record, timeToLive);
 
     // directDeepLink bypasses the VPR step and assumes the wallet knows to send a DIDAuth.
     const directDeepLink = `https://lcw.app/request.html?issuer=issuer.example.com&auth_type=bearer&challenge=${record.transactionId}&vc_request_url=${exchangeHost}/exchange/${record.exchangeId}/${record.transactionId}`
