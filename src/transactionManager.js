@@ -49,7 +49,7 @@ export const setupExchange = async (exchangeData) => {
   // A wallet query is either a deeplink, or a VPR for use with CHAPI.
   const exchangeHost = exchangeData.exchangeHost;
   const tenantName = exchangeData.tenantName;
-  const processRecord = getProcessRecordFnForExchangeHostAndTenant(exchangeHost, tenantName)
+  const processRecord = bindProcessRecordFnToExchangeHostAndTenant(exchangeHost, tenantName)
   return await Promise.all(exchangeData.data.map(processRecord))
 }
 
@@ -82,7 +82,7 @@ export const getDIDAuthVPR = async (exchangeId) => {
   }
 }
 
-const getProcessRecordFnForExchangeHostAndTenant = (exchangeHost, tenantName) => {
+const bindProcessRecordFnToExchangeHostAndTenant = (exchangeHost, tenantName) => {
   // returns a function for processing incoming records, bound to the specific exchangeHost and tenant
   return async (record) => {
     record.tenantName = tenantName
