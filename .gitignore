@@ -118,4 +118,4 @@ dist
 .DS_Store
 
 # the keyv data store
- src/data
+src/data
