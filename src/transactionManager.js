@@ -32,21 +32,22 @@ export const initializeTransactionManager = () => {
 }
 
 /**
- * @param {Array} data Array of data items, one per credential, with data needed for the exchange
- * @param {Object} [item.vc] optional - an unsigned populated VC
- * @param {Object} [item.subjectData] optional - data to populate a VC
- * @param {string} item.exchangeHost hostname for the exchange endpoints
- * @param {string} [item.tenantName] tenant with which to sign
- * @param {string} [item.batchId] batch to which cred belongs; also determines vc template
- * @param {string} item.retrievalId an identier for ech record, e.g., the recipient's email address
- *
- * @returns {Object} deeplink/chapi queries with which to open a wallet for this exchange
+ * @param {Array} exchangeData Array of data items, one per credential, with data needed for the exchange
+ * @param {Object} [exchangeData.data[].vc] optional - an unsigned populated VC
+ * @param {Object} [exchangeData.data[].subjectData] optional - data to populate a VC
+ * @param {string} exchangeData.exchangeHost hostname for the exchange endpoints
+ * @param {string} exchangeData.tenantName tenant with which to sign
+ * @param {string} exchangeData.batchId batch to which cred belongs; also determines vc template
+ * @param {string} exchangeData.data[].retrievalId an identier for ech record, e.g., the recipient's email address
+ * @param {Object} exchangeData.data[].metadata anything else we want to store in the record for later use
+ * @returns {Object} deeplink/chapi queries with which to open a wallet for this exchange, as well as whatever is in metadata
  */
 export const setupExchange = async (exchangeData) => {
   verifyExchangeData(exchangeData)
   // sets up an exchange ID in keyv for each record, and returns an array of objects
   // where each object contains a choice of wallet queries for the exchange.
   // A wallet query is either a deeplink, or a VPR for use with CHAPI.
+  // Each object also contains whatever 'metadata' had been supplied
   const exchangeHost = exchangeData.exchangeHost;
   const tenantName = exchangeData.tenantName;
   const processRecord = bindProcessRecordFnToExchangeHostAndTenant(exchangeHost, tenantName)
@@ -102,8 +103,9 @@ const bindProcessRecordFnToExchangeHostAndTenant = (exchangeHost, tenantName) =>
     // 
     const chapiVPR = await getDIDAuthVPR(record.exchangeId)
     const retrievalId = record.retrievalId;
+    const metadata = record.metadata
 
-    return { retrievalId, directDeepLink, vprDeepLink, chapiVPR }
+    return { retrievalId, directDeepLink, vprDeepLink, chapiVPR, metadata }
   }
 }
 /**
@@ -162,13 +164,14 @@ const getExchangeData = async exchangeId => {
 }
 
 /**
- * @param {Object} data
- * @param {Object} [data.vc] optional - an unsigned populated VC
- * @param {Object} [data.subjectData] optional - data to populate a VC
- * @param {string} data.exchangeHost hostname for the exchange endpoints
- * @param {string} [data.tenantName] tenant with which to sign
- * @param {string} [data.batchId] batch to which cred belongs; also determines vc template
- * @param {string} item.retrievalId an identier for each record, e.g., the recipient's email address
+ * @param {Array} exchangeData Array of data items, one per credential, with data needed for the exchange
+ * @param {Object} [exchangeData.data[].vc] optional - an unsigned populated VC
+ * @param {Object} [exchangeData.data[].subjectData] optional - data to populate a VC
+ * @param {string} exchangeData.exchangeHost hostname for the exchange endpoints
+ * @param {string} exchangeData.tenantName tenant with which to sign
+ * @param {string} exchangeData.batchId batch to which cred belongs; also determines vc template
+ * @param {string} exchangeData.data[].retrievalId an identifer for ech record, e.g., the recipient's email address
+ * @param {Object} exchangeData.data[].metadata anything else we want to store in the record for later use
  * @throws {ExchangeIdError} Unknown exchangeID
  */
 const verifyExchangeData = exchangeData => {
