@@ -1,9 +1,9 @@
 import testVC from './testVC.js';
 
-const getDataForExchangeSetupPost = (tenantName) => {
+const getDataForExchangeSetupPost = (tenantName, exchangeHost = 'http://localhost:4005') => {
   const fakeData = {
     tenantName,
-    exchangeHost: 'http://localhost:4005',
+    exchangeHost,
     data: [
       { vc: testVC, retrievalId: 'someId',  },
       { vc: testVC, retrievalId: 'blah' }

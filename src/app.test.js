@@ -50,12 +50,22 @@ describe('api', () => {
       expect(response.body.length).to.eql(testData.data.length)
     })
    
-    
-
-  
   })
 
+  describe('GET /healthz', () => {
+
+    it.only('returns 200 if running', async () => {
+     
+      const response = await request(app)
+        .get("/healthz")
+
+      expect(response.header["content-type"]).to.have.string("json");
+      expect(response.status).to.eql(200);
+      expect(response.body).to.eql({ message: 'transaction-service server status: ok.', healthy: true })
+     
+    })
   
+  })
 
 })
 
