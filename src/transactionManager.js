@@ -11,7 +11,9 @@ const defaultTimeToLive = process.env.DEFAULT_TTL = 1000 * 60 * 10; // keyv entr
 
 let keyv;
 
-
+/**
+ * Intializes the keyv store either in-memory or in file system, according to env.
+ */
 export const initializeTransactionManager = () => {
   if (!keyv) {
     if (persistToFile) {
@@ -83,9 +85,13 @@ export const getDIDAuthVPR = async (exchangeId) => {
   }
 }
 
+/** 
+ *  @param {string} exchangeHost 
+ *  @param {string} tenantName
+ *  @returns a function for processing incoming records, bound to the specific exchangeHost and tenant
+ */
 const bindProcessRecordFnToExchangeHostAndTenant = (exchangeHost, tenantName) => {
-  // returns a function for processing incoming records, bound to the specific exchangeHost and tenant
-  return async (record) => {
+   return async (record) => {
     record.tenantName = tenantName
     record.exchangeHost = exchangeHost
     record.transactionId = crypto.randomUUID()
@@ -154,13 +160,26 @@ export const retrieveStoredData = async (exchangeId, transactionId, didAuthVP) =
 
 /**
  * @param {string} exchangeId
- * @throws {ExchangeIdError} Unknown exchangeID
+ * @throws {ExchangeError} Unknown exchangeID
  * @returns returns stored data if exchangeId exists
  */
 const getExchangeData = async exchangeId => {
   const storedData = await keyv.get(exchangeId)
   if (!storedData) throw new ExchangeError("Unknown exchangeId.", 404)
   return storedData
+}
+
+/**
+ * This is meant for testing failures. It deletes the keyv store entirely.
+ * @throws {ExchangeError} Unknown error
+ */
+export const clearKeyv = () => {
+  try {
+    keyv = null;
+  } catch (e) {
+   throw new ExchangeError("Clear failed")
+   }
+   
 }
 
 /**
@@ -172,7 +191,7 @@ const getExchangeData = async exchangeId => {
  * @param {string} exchangeData.batchId batch to which cred belongs; also determines vc template
  * @param {string} exchangeData.data[].retrievalId an identifer for ech record, e.g., the recipient's email address
  * @param {Object} exchangeData.data[].metadata anything else we want to store in the record for later use
- * @throws {ExchangeIdError} Unknown exchangeID
+ * @throws {ExchangError} Unknown exchangeID
  */
 const verifyExchangeData = exchangeData => {
   const batchId = exchangeData.batchId
