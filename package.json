@@ -6,7 +6,12 @@
   "scripts": {
     "start": "node -r dotenv/config server.js",
     "dev": "nodemon -r dotenv/config server.js",
-    "test": "NODE_OPTIONS=--experimental-vm-modules npx mocha --timeout 10000 -r dotenv/config dotenv_config_path=src/test-fixtures/.env.testing src/app.test.js "
+    "dev-noenv": "nodemon server.js",
+    "test": "NODE_OPTIONS=--experimental-vm-modules npx c8 mocha --timeout 10000 -r dotenv/config dotenv_config_path=src/test-fixtures/.env.testing src/app.test.js ",
+    "coveralls": "npm run test; c8 report --reporter=text-lcov | coveralls",
+    "prepare": "test -d node_modules/husky && husky install || echo \"husky is not installed\"",
+    "lint": "eslint",
+    "lint-fix": "eslint --fix"
   },
   "dependencies": {
     "@digitalbazaar/did-io": "^2.0.0",
@@ -30,9 +35,17 @@
     "morgan": "~1.9.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.3.0",
     "chai": "^4.3.7",
+    "eslint": "^9.3.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-mocha": "^10.4.3",
+    "globals": "^15.3.0",
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.5",
     "mocha": "^10.2.0",
     "nodemon": "^2.0.21",
+    "prettier": "3.2.5",
     "supertest": "^6.3.3"
   },
   "keywords": [
@@ -51,5 +64,9 @@
     "url": "https://github.com/digitalcredentials/transaction-manager-service"
   },
   "homepage": "https://github.com/digitalcredentials/transaction-manager-service",
-  "bugs": "https://github.com/digitalcredentials/transaction-manager-service/issues"
+  "bugs": "https://github.com/digitalcredentials/transaction-manager-service/issues",
+  "lint-staged": {
+    "*.js": "eslint --cache --fix",
+    "*.{js,css,md}": "prettier --write"
+  }
 }

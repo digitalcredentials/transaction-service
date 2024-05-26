@@ -1,15 +1,15 @@
 /*!
  * Copyright (c) 2023 Digital Credentials Consortium. All rights reserved.
  */
-import crypto from 'crypto';
-import Keyv from 'keyv';
-import {KeyvFile} from 'keyv-file'
-import { verifyDIDAuth } from './didAuth.js';
+import crypto from 'crypto'
+import Keyv from 'keyv'
+import { KeyvFile } from 'keyv-file'
+import { verifyDIDAuth } from './didAuth.js'
 
 const persistToFile = process.env.PERSIST_TO_FILE
-const defaultTimeToLive = process.env.DEFAULT_TTL = 1000 * 60 * 10; // keyv entry expires after ten minutes
+const defaultTimeToLive = (process.env.DEFAULT_TTL = 1000 * 60 * 10) // keyv entry expires after ten minutes
 
-let keyv;
+let keyv
 
 /**
  * Intializes the keyv store either in-memory or in file system, according to env.
@@ -27,10 +27,9 @@ export const initializeTransactionManager = () => {
         })
       })
     } else {
-      keyv = new Keyv();
+      keyv = new Keyv()
     }
   }
-
 }
 
 /**
@@ -50,12 +49,14 @@ export const setupExchange = async (exchangeData) => {
   // where each object contains a choice of wallet queries for the exchange.
   // A wallet query is either a deeplink, or a VPR for use with CHAPI.
   // Each object also contains whatever 'metadata' had been supplied
-  const exchangeHost = exchangeData.exchangeHost;
-  const tenantName = exchangeData.tenantName;
-  const processRecord = bindProcessRecordFnToExchangeHostAndTenant(exchangeHost, tenantName)
+  const exchangeHost = exchangeData.exchangeHost
+  const tenantName = exchangeData.tenantName
+  const processRecord = bindProcessRecordFnToExchangeHostAndTenant(
+    exchangeHost,
+    tenantName
+  )
   return await Promise.all(exchangeData.data.map(processRecord))
 }
-
 
 /**
  * This returns the vpr as described in the
@@ -65,40 +66,43 @@ export const setupExchange = async (exchangeData) => {
 export const getDIDAuthVPR = async (exchangeId) => {
   const exchangeData = await getExchangeData(exchangeId)
   return {
-    "query": {
-      "type": "DIDAuthentication"
+    query: {
+      type: 'DIDAuthentication'
     },
-    "interact": {
-      "service": [
+    interact: {
+      service: [
         {
-          "type": "VerifiableCredentialApiExchangeService",
-          "serviceEndpoint": `${exchangeData.exchangeHost}/exchange/${exchangeData.exchangeId}/${exchangeData.transactionId}`
+          type: 'VerifiableCredentialApiExchangeService',
+          serviceEndpoint: `${exchangeData.exchangeHost}/exchange/${exchangeData.exchangeId}/${exchangeData.transactionId}`
           //   "serviceEndpoint": "https://playground.chapi.io/exchanges/eyJjcmVkZW50aWFsIjoiaHR0cHM6Ly9wbGF5Z3JvdW5kLmNoYXBpLmlvL2V4YW1wbGVzL2pmZjIvamZmMi5qc29uIiwiaXNzdWVyIjoiZGIvdmMifQ/esOGVHG8d44Q"
         },
         {
-          "type": "CredentialHandlerService"
+          type: 'CredentialHandlerService'
         }
       ]
     },
-    "challenge": exchangeData.transactionId,
-    "domain": exchangeData.exchangeHost,
+    challenge: exchangeData.transactionId,
+    domain: exchangeData.exchangeHost
   }
 }
 
-/** 
- *  @param {string} exchangeHost 
+/**
+ *  @param {string} exchangeHost
  *  @param {string} tenantName
  *  @returns a function for processing incoming records, bound to the specific exchangeHost and tenant
  */
-const bindProcessRecordFnToExchangeHostAndTenant = (exchangeHost, tenantName) => {
-   return async (record) => {
+const bindProcessRecordFnToExchangeHostAndTenant = (
+  exchangeHost,
+  tenantName
+) => {
+  return async (record) => {
     record.tenantName = tenantName
     record.exchangeHost = exchangeHost
     record.transactionId = crypto.randomUUID()
     record.exchangeId = crypto.randomUUID()
-    
+
     const timeToLive = record.timeToLive || defaultTimeToLive
-    await keyv.set(record.exchangeId, record, timeToLive);
+    await keyv.set(record.exchangeId, record, timeToLive)
 
     // directDeepLink bypasses the VPR step and assumes the wallet knows to send a DIDAuth.
     const directDeepLink = `https://lcw.app/request.html?issuer=issuer.example.com&auth_type=bearer&challenge=${record.transactionId}&vc_request_url=${exchangeHost}/exchange/${record.exchangeId}/${record.transactionId}`
@@ -106,34 +110,36 @@ const bindProcessRecordFnToExchangeHostAndTenant = (exchangeHost, tenantName) =>
     //vprDeepLink = deeplink that calls /exchanges/${exchangeId} to initiate the exchange
     // and get back a VPR to which to then send the DIDAuth.
     const vprDeepLink = `https://lcw.app/request.html?issuer=issuer.example.com&auth_type=bearer&vc_request_url=${exchangeHost}/exchange/${record.exchangeId}`
-    // 
+    //
     const chapiVPR = await getDIDAuthVPR(record.exchangeId)
-    const retrievalId = record.retrievalId;
+    const retrievalId = record.retrievalId
     const metadata = record.metadata
 
     return { retrievalId, directDeepLink, vprDeepLink, chapiVPR, metadata }
   }
 }
 /**
- * 
+ *
  * This is the "old" version of the vpr, which might have been superseded by the above vpr,
  * at least as described in the "Integrating with the VC-API Exchanges workflow" section of:
  * https://chapi.io/developers/playgroundfaq/
-* @param {string} exchangeId
-* @returns returns a verifiable presentation request for DIDAuth
-*/
+ * @param {string} exchangeId
+ * @returns returns a verifiable presentation request for DIDAuth
+ */
 export const getVPR = async (exchangeId) => {
   const exchangeData = await getExchangeData(exchangeId)
   return {
-    "verifiablePresentationRequest": {
-      "query": [{ "type": "DIDAuthentication" }],
-      "challenge": exchangeData.transactionId,
-      "domain": exchangeData.exchangeHost,
-      "interact": {
-        "service": [{
-          "type": "UnmediatedPresentationService2021",
-          "serviceEndpoint": `${exchangeData.exchangeHost}/exchange/${exchangeData.exchangeId}/${exchangeData.transactionId}`
-        }]
+    verifiablePresentationRequest: {
+      query: [{ type: 'DIDAuthentication' }],
+      challenge: exchangeData.transactionId,
+      domain: exchangeData.exchangeHost,
+      interact: {
+        service: [
+          {
+            type: 'UnmediatedPresentationService2021',
+            serviceEndpoint: `${exchangeData.exchangeHost}/exchange/${exchangeData.exchangeId}/${exchangeData.transactionId}`
+          }
+        ]
       }
     }
   }
@@ -144,17 +150,24 @@ export const getVPR = async (exchangeId) => {
  * @param {string} transactionId
  * @param {Object} didAuthVP
  * @throws {ExchangeError} Invalid DIDAuth
- * @returns returns stored data but only if didAuth verifies and transactionId 
+ * @returns returns stored data but only if didAuth verifies and transactionId
  * from request param matches stored transactionId
  */
-export const retrieveStoredData = async (exchangeId, transactionId, didAuthVP) => {
+export const retrieveStoredData = async (
+  exchangeId,
+  transactionId,
+  didAuthVP
+) => {
   const storedData = await getExchangeData(exchangeId)
-  const didAuthVerified = await verifyDIDAuth({ presentation: didAuthVP, challenge: storedData.transactionId })
+  const didAuthVerified = await verifyDIDAuth({
+    presentation: didAuthVP,
+    challenge: storedData.transactionId
+  })
   const transactionIdMatches = transactionId === storedData.transactionId
   if (didAuthVerified && transactionIdMatches) {
     return storedData
   } else {
-    throw new ExchangeError("Invalid DIDAuth.", 401)
+    throw new ExchangeError('Invalid DIDAuth.', 401)
   }
 }
 
@@ -163,9 +176,9 @@ export const retrieveStoredData = async (exchangeId, transactionId, didAuthVP) =
  * @throws {ExchangeError} Unknown exchangeID
  * @returns returns stored data if exchangeId exists
  */
-const getExchangeData = async exchangeId => {
+const getExchangeData = async (exchangeId) => {
   const storedData = await keyv.get(exchangeId)
-  if (!storedData) throw new ExchangeError("Unknown exchangeId.", 404)
+  if (!storedData) throw new ExchangeError('Unknown exchangeId.', 404)
   return storedData
 }
 
@@ -175,11 +188,11 @@ const getExchangeData = async exchangeId => {
  */
 export const clearKeyv = () => {
   try {
-    keyv = null;
+    keyv = null
   } catch (e) {
-   throw new ExchangeError("Clear failed")
-   }
-   
+    console.log(e)
+    throw new ExchangeError('Clear failed')
+  }
 }
 
 /**
@@ -193,31 +206,45 @@ export const clearKeyv = () => {
  * @param {Object} exchangeData.data[].metadata anything else we want to store in the record for later use
  * @throws {ExchangError} Unknown exchangeID
  */
-const verifyExchangeData = exchangeData => {
+const verifyExchangeData = (exchangeData) => {
   const batchId = exchangeData.batchId
   if (!exchangeData.exchangeHost) {
-    throw new ExchangeError("Incomplete exchange data - you must provide an exchangeHost", 400)
+    throw new ExchangeError(
+      'Incomplete exchange data - you must provide an exchangeHost',
+      400
+    )
   }
   if (!exchangeData.tenantName) {
-    throw new ExchangeError("Incomplete exchange data - you must provide a tenant name", 400)
+    throw new ExchangeError(
+      'Incomplete exchange data - you must provide a tenant name',
+      400
+    )
   }
-  exchangeData.data.forEach(credData => {
+  exchangeData.data.forEach((credData) => {
     if (!credData.vc || credData.subjectData) {
-      throw new ExchangeError("Incomplete exchange data - you must provide either a vc or subjectData", 400)
+      throw new ExchangeError(
+        'Incomplete exchange data - you must provide either a vc or subjectData',
+        400
+      )
     }
     if (credData.subjectData && !batchId) {
-      throw new ExchangeError("Incomplete exchange data - if you provide subjectData, you must also provide a batchId", 400)
+      throw new ExchangeError(
+        'Incomplete exchange data - if you provide subjectData, you must also provide a batchId',
+        400
+      )
     }
     if (!credData.retrievalId) {
-      throw new ExchangeError("Incomplete exchange data - every submitted record must have it's own retrievalId.", 400)
+      throw new ExchangeError(
+        "Incomplete exchange data - every submitted record must have it's own retrievalId.",
+        400
+      )
     }
   })
 }
 
-
 class ExchangeError extends Error {
   constructor(msg, code) {
-    super(msg);
+    super(msg)
     this.code = code
   }
 }
