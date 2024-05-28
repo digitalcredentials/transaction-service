@@ -6,7 +6,7 @@ import {
   clearKeyv,
   initializeTransactionManager
 } from './transactionManager.js'
-
+import TransactionException from './TransactionException.js'
 let app
 
 describe('api', function () {
@@ -70,6 +70,18 @@ describe('api', function () {
       expect(response.status).to.eql(503)
       expect(response.body).to.have.property('healthy', false)
       initializeTransactionManager()
+    })
+  })
+
+  describe('TransactionException', function () {
+    it('sets props on Exception', function () {
+      const code = 404
+      const message = 'a test message'
+      const stack = { test: 'test' }
+      const obj = new TransactionException(code, message, stack)
+      expect(obj.code).to.eql(code)
+      expect(obj.message).to.eql(message)
+      expect(obj.stack).to.eql(stack)
     })
   })
 })
