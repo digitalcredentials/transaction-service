@@ -8,7 +8,7 @@
     "dev": "nodemon -r dotenv/config server.js",
     "dev-noenv": "nodemon server.js",
     "test": "NODE_OPTIONS=--experimental-vm-modules npx c8 mocha --timeout 10000 -r dotenv/config dotenv_config_path=src/test-fixtures/.env.testing src/app.test.js ",
-    "coveralls": "npm run test; npx c8 report --reporter=text-lcov",
+    "coveralls": "npm run test; npx c8 report --reporter=text-lcov > ./coverage/lcov.info",
     "prepare": "test -d node_modules/husky && husky install || echo \"husky is not installed\"",
     "lint": "eslint",
     "lint-fix": "eslint --fix"
