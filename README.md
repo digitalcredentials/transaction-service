@@ -1,7 +1,6 @@
 # Transaction Manager Service _(@digitalcredentials/transaction-manager-service)_
 
 [![Build status](https://img.shields.io/github/actions/workflow/status/digitalcredentials/transaction-service/main.yml?branch=main)](https://github.com/digitalcredentials/transaction-service/actions?query=workflow%3A%22Node.js+CI%22)
-
 [![Coverage Status](https://coveralls.io/repos/github/digitalcredentials/transaction-service/badge.svg?branch=jc-add-healthz)](https://coveralls.io/github/digitalcredentials/transaction-service?branch=jc-add-healthz)
 
 > Express app for managing the transactions used in [VC-API exchanges](https://w3c-ccg.github.io/vc-api/#initiate-exchange).

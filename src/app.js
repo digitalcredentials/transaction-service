@@ -2,6 +2,8 @@ import express from 'express'
 import logger from 'morgan'
 import cors from 'cors'
 import axios from 'axios'
+import assert from 'node:assert/strict'
+
 import {
   initializeTransactionManager,
   setupExchange,
@@ -10,7 +12,6 @@ import {
 } from './transactionManager.js'
 import { getDataForExchangeSetupPost } from './test-fixtures/testData.js'
 import { getSignedDIDAuth } from './didAuth.js'
-import TransactionException from './TransactionException.js'
 
 export async function build() {
   await initializeTransactionManager()
@@ -30,6 +31,7 @@ export async function build() {
     const baseURL = `${req.protocol}://${req.headers.host}`
     const testData = getDataForExchangeSetupPost('test', baseURL)
     const exchangeURL = `${baseURL}/exchange`
+
     try {
       const response = await axios.post(exchangeURL, testData)
       const { data: walletQuerys } = response
@@ -40,15 +42,8 @@ export async function build() {
       const didAuth = await getSignedDIDAuth('did:ex:223234', challenge)
       const { data } = await axios.post(requestURI, didAuth)
       const { tenantName, vc: unSignedVC } = data
-      if (
-        !tenantName === 'test' ||
-        !unSignedVC.name === 'A Simply Wonderful Course'
-      ) {
-        throw new TransactionException(
-          503,
-          'transaction-service healthz failed'
-        )
-      }
+      assert.equal(tenantName, 'test')
+      assert.ok(unSignedVC.issuer)
     } catch (e) {
       console.log(`exception in healthz: ${JSON.stringify(e)}`)
       return res.status(503).json({
@@ -118,7 +113,6 @@ export async function build() {
       )
       return res.json(data)
     } catch (error) {
-      console.log(error)
       return res.status(error.code || 500).json(error)
     }
   })

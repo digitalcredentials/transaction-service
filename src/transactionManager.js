@@ -6,7 +6,7 @@ import Keyv from 'keyv'
 import { KeyvFile } from 'keyv-file'
 import { verifyDIDAuth } from './didAuth.js'
 
-const persistToFile = process.env.PERSIST_TO_FILE
+//const persistToFile = process.env.PERSIST_TO_FILE
 const defaultTimeToLive = (process.env.DEFAULT_TTL = 1000 * 60 * 10) // keyv entry expires after ten minutes
 
 let keyv
@@ -16,10 +16,10 @@ let keyv
  */
 export const initializeTransactionManager = () => {
   if (!keyv) {
-    if (persistToFile) {
+    if (process.env.PERSIST_TO_FILE) {
       keyv = new Keyv({
         store: new KeyvFile({
-          filename: persistToFile, // the file path to store the data
+          filename: process.env.PERSIST_TO_FILE, // the file path to store the data
           expiredCheckDelay: 4 * 3600 * 1000, // ms (so every 4 hours) how often to check for and remove expired records
           writeDelay: 100, // ms, batch write to disk in a specific duration, enhance write performance.
           encode: JSON.stringify, // serialize function
@@ -167,7 +167,7 @@ export const retrieveStoredData = async (
   if (didAuthVerified && transactionIdMatches) {
     return storedData
   } else {
-    throw new ExchangeError('Invalid DIDAuth.', 401)
+    throw new ExchangeError(401, 'Invalid DIDAuth.')
   }
 }
 
@@ -178,21 +178,15 @@ export const retrieveStoredData = async (
  */
 const getExchangeData = async (exchangeId) => {
   const storedData = await keyv.get(exchangeId)
-  if (!storedData) throw new ExchangeError('Unknown exchangeId.', 404)
+  if (!storedData) throw new ExchangeError(404, 'Unknown exchangeId.')
   return storedData
 }
 
 /**
  * This is meant for testing failures. It deletes the keyv store entirely.
- * @throws {ExchangeError} Unknown error
  */
 export const clearKeyv = () => {
-  try {
-    keyv = null
-  } catch (e) {
-    console.log(e)
-    throw new ExchangeError('Clear failed')
-  }
+  keyv = null
 }
 
 /**
@@ -210,41 +204,39 @@ const verifyExchangeData = (exchangeData) => {
   const batchId = exchangeData.batchId
   if (!exchangeData.exchangeHost) {
     throw new ExchangeError(
-      'Incomplete exchange data - you must provide an exchangeHost',
-      400
+      400,
+      'Incomplete exchange data - you must provide an exchangeHost'
     )
   }
   if (!exchangeData.tenantName) {
     throw new ExchangeError(
-      'Incomplete exchange data - you must provide a tenant name',
-      400
+      400,
+      'Incomplete exchange data - you must provide a tenant name'
     )
   }
   exchangeData.data.forEach((credData) => {
-    if (!credData.vc || credData.subjectData) {
+    if (!credData.vc && !credData.subjectData) {
       throw new ExchangeError(
-        'Incomplete exchange data - you must provide either a vc or subjectData',
-        400
+        400,
+        'Incomplete exchange data - you must provide either a vc or subjectData'
       )
     }
     if (credData.subjectData && !batchId) {
       throw new ExchangeError(
-        'Incomplete exchange data - if you provide subjectData, you must also provide a batchId',
-        400
+        400,
+        'Incomplete exchange data - if you provide subjectData, you must also provide a batchId'
       )
     }
     if (!credData.retrievalId) {
       throw new ExchangeError(
-        "Incomplete exchange data - every submitted record must have it's own retrievalId.",
-        400
+        400,
+        "Incomplete exchange data - every submitted record must have it's own retrievalId."
       )
     }
   })
 }
 
-class ExchangeError extends Error {
-  constructor(msg, code) {
-    super(msg)
-    this.code = code
-  }
+function ExchangeError(code, message) {
+  this.code = code
+  this.message = message
 }
