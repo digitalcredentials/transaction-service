@@ -12,4 +12,4 @@ const getDataForExchangeSetupPost = (tenantName) => {
   return fakeData
 }
 
-export { getDataForExchangeSetupPost }
+export { getDataForExchangeSetupPost, testVC }
