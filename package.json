@@ -1,7 +1,7 @@
 {
   "name": "@digitalcredentials/transaction-manager-service",
   "description": "An express app for managing challenges in a DIDAuth exchange.",
-  "version": "0.0.1",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "start": "node -r dotenv/config server.js",
