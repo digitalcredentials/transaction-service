@@ -15,4 +15,4 @@ const getDataForExchangeSetupPost = (
   return fakeData
 }
 
-export { getDataForExchangeSetupPost }
+export { getDataForExchangeSetupPost, testVC }
