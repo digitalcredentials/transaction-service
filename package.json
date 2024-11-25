@@ -16,9 +16,9 @@
   "dependencies": {
     "@digitalbazaar/ed25519-signature-2020": "^5.4.0",
     "@digitalbazaar/ed25519-verification-key-2020": "^4.1.0",
-    "axios": "^1.7.2",
     "@digitalbazaar/vc": "^7.0.0",
     "@digitalcredentials/security-document-loader": "^6.0.0",
+    "axios": "^1.7.7",
     "cookie-parser": "~1.4.4",
     "cors": "^2.8.5",
     "debug": "~2.6.9",

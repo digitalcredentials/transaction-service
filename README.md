@@ -1,7 +1,7 @@
 # Transaction Manager Service _(@digitalcredentials/transaction-manager-service)_
 
 [![Build status](https://img.shields.io/github/actions/workflow/status/digitalcredentials/transaction-service/main.yml?branch=main)](https://github.com/digitalcredentials/transaction-service/actions?query=workflow%3A%22Node.js+CI%22)
-[![Coverage Status](https://coveralls.io/repos/github/digitalcredentials/transaction-service/badge.svg?branch=jc-add-healthz)](https://coveralls.io/github/digitalcredentials/transaction-service?branch=jc-add-healthz)
+[![Coverage Status](https://coveralls.io/repos/github/digitalcredentials/transaction-service/badge.svg?branch=main)](https://coveralls.io/github/digitalcredentials/transaction-service?branch=main)
 
 > Express app for managing the transactions used in [VC-API exchanges](https://w3c-ccg.github.io/vc-api/#initiate-exchange).
 
@@ -11,6 +11,8 @@
 
 - [Overview](#overview)
 - [API](#api)
+- [Health Check](#health-check)
+- [Environment Variables](#environment-variables)
 - [Versioning](#versioning)
 - [Contribute](#contribute)
 - [License](#license)
@@ -30,7 +32,7 @@ Especially meant to be used as a service within a Docker compose network, initia
 
 ## API
 
-Implements three endpoints:
+Implements four endpoints:
 
 * POST /exchange
 
@@ -102,6 +104,38 @@ NOTE: the object returned from the initial setup call to the exchanger returns t
 - `vprDeepLink` which prompts the wallet to first call the inititaion endpoint, from which the [DIDAuthentication Verifiable Presentation Request](https://w3c-ccg.github.io/vp-request-spec/#did-authentication) is returned, and after which the wallet then submits its DID Authentication.  So this is a two-step process.
 
 At the moment, the [Leaner Credential Wallet](https://lcw.app) only supports the directDeepLink.
+
+* GET /healthz
+
+Which is an endpoint typically meant to be called by the Docker [HEALTHCHECK](https://docs.docker.com/reference/dockerfile/#healthcheck) option for a specific service. Read more below in the [Health Check](#health-check) section.
+
+## Health Check
+
+Docker has a [HEALTHCHECK](https://docs.docker.com/reference/dockerfile/#healthcheck) option for monitoring the
+state (health) of a container. We've included an endpoint `GET healthz` that checks the health of the signing service (by running a test signature). The endpoint can be directly specified in a CURL or WGET call on the HEALTHCHECK, but we also provide a [healthcheck.js](./healthcheck.js) function that can be similarly invoked by the HEALTHCHECK and which itself hits the `healthz` endpoint, but additionally provides options for both email and Slack notifications when the service is unhealthy. 
+
+You can see how we've configured the HEALTHCHECK in our [example compose files](https://github.com/digitalcredentials/docs/blob/main/deployment-guide/DCCDeploymentGuide.md#docker-compose-examples). Our compose files also include an example of how to use [autoheal](https://github.com/willfarrell/docker-autoheal) together with HEALTHCHECK to restart an unhealthy container.
+
+If you want notifications sent to a Slack channel, you'll have to set up a Slack [web hook](https://api.slack.com/messaging/webhooks).
+
+If you want notifications sent to an email address, you'll need an SMTP server to which you can send emails, so something like sendgrid, mailchimp, mailgun, or even your own email account if it allows direct SMTP sends. Gmail can apparently be configured to so so.
+
+## Environment Variables
+
+There is a sample .env file provided called .env.example to help you get started with your own .env file. The supported fields:
+
+| Key | Description | Default | Required |
+| --- | --- | --- | --- |
+| `PORT` | http port on which to run the express app | 4006 | no |
+| `HEALTH_CHECK_SMTP_HOST` | SMTP host for unhealthy notification emails - see [Health Check](#health-check) | no | no |
+| `HEALTH_CHECK_SMTP_USER` | SMTP user for unhealthy notification emails - see [Health Check](#health-check) | no | no |
+| `HEALTH_CHECK_SMTP_PASS` | SMTP password for unhealthy notification emails - see [Health Check](#health-check) | no | no |
+| `HEALTH_CHECK_EMAIL_FROM` | name of email sender for unhealthy notifications emails - see [Health Check](#health-check) | no | no |
+| `HEALTH_CHECK_EMAIL_RECIPIENT` | recipient when unhealthy - see [Health Check](#health-check) | no | no |
+| `HEALTH_CHECK_EMAIL_SUBJECT` | email subject when unhealthy - see [Health Check](#health-check) | no | no |
+| `HEALTH_CHECK_WEB_HOOK` | posted to when unhealthy - see [Health Check](#health-check) | no | no |
+| `HEALTH_CHECK_SERVICE_URL` | local url for this service - see [Health Check](#health-check) | http://SIGNER:4004/healthz | no |
+| `HEALTH_CHECK_SERVICE_NAME` | service name to use in error messages - see [Health Check](#health-check) | SIGNING-SERVICE | no |
 
 ## Versioning
 
