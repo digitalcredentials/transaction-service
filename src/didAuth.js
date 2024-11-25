@@ -1,4 +1,6 @@
+
 import {verify,signPresentation, createPresentation} from '@digitalbazaar/vc';
+
 import {Ed25519Signature2020} from '@digitalbazaar/ed25519-signature-2020';
 import { securityLoader } from '@digitalcredentials/security-document-loader';
 import {Ed25519VerificationKey2020} from '@digitalbazaar/ed25519-verification-key-2020';
@@ -16,6 +18,7 @@ const key = await Ed25519VerificationKey2020.generate(
         controller: "did:key:z6MkvL5yVCgPhYvQwSoSRQou6k6ZGfD5mNM57HKxufEXwfnP"
     }
 )
+
 
 const suite = new Ed25519Signature2020({key});
 

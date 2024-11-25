@@ -1,0 +1,18 @@
+**/*.env
+.git
+.github
+.husky
+coverage
+logs
+node_modules
+.dockerignore
+.editorconfig
+.eslintrc.cjs
+.gitignore
+.lintstagedrc.json
+.prettierignore
+.prettierrc.js
+compose-test.yaml
+Dockerfile
+README
+ .env.healthcheck.testing
