@@ -1,5 +1,12 @@
 # transaction-manager-service Changelog
 
+## 0.3.0 - 2024-11-25
+
+### Changed
+
+- added test coverage
+- added health check option
+
 ## 0.2.0 - 2024-10-11
 
 ### Changed
