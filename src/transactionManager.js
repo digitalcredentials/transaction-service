@@ -26,6 +26,8 @@ export const initializeTransactionManager = () => {
           decode: JSON.parse // deserialize function
         })
       })
+    } else if (process.env.REDIS_URI) {
+      keyv = new Keyv(process.env.REDIS_URI)
     } else {
       keyv = new Keyv()
     }
