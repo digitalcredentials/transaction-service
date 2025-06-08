@@ -159,7 +159,7 @@ To install locally (for development):
 git clone https://github.com/digitalcredentials/transaction-manager-service.git
 cd transaction-manager-service
 npm install
-npm dev
+npm run dev
 ```
 
 ## Contribute
