@@ -7,7 +7,7 @@
     "build": "tsc",
     "start": "node -r dotenv/config dist/server.js",
     "dev": "nodemon -r dotenv/config --exec tsx src/server.ts",
-    "dev-noenv": "nodemon --exec ts-node src/server.ts",
+    "dev-noenv": "nodemon --exec tsx src/server.ts",
     "test": "dotenvx run -f src/test-fixtures/.env.testing -- vitest",
     "coverage": "dotenvx run -f src/test-fixtures/.env.testing -- vitest run --coverage",
     "prepare": "husky",
@@ -57,7 +57,6 @@
     "nodemon": "^2.0.21",
     "prettier": "3.2.5",
     "supertest": "^6.3.3",
-    "ts-node": "^10.9.2",
     "typescript": "^5.8.3",
     "vitest": "^3.2.3"
   },
