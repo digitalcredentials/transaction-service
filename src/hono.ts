@@ -38,6 +38,17 @@ const handleErrors = (viewHandler: (c: Context) => Promise<Response>) => {
   }
 }
 
+/** A listing of all application routes */
+const routes = {
+  index: '/',
+  healthz: '/healthz',
+  exchangeBatchCreate: '/exchange',
+  legacyExchangeDetail: '/exchange/:exchangeId',
+  exchangeCreate: '/workflows/:workflowId/exchanges',
+  exchangeDetail: '/workflows/:workflowId/exchanges/:exchangeId',
+  protocols: '/workflows/:workflowId/exchanges/:exchangeId/protocols'
+}
+
 export const app = new Hono()
 
   .notFound((c) => {
@@ -49,7 +60,7 @@ export const app = new Hono()
 
   // Basic health check
   .get(
-    '/',
+    routes.index,
     handleErrors(async (c) => {
       return c.json({ message: 'transaction-service server status: ok.' })
     })
@@ -57,7 +68,7 @@ export const app = new Hono()
 
   // Extended health check
   .get(
-    '/healthz',
+    routes.healthz,
     handleErrors(async (c) => {
       return await healthCheck(c)
     })
@@ -72,7 +83,7 @@ export const app = new Hono()
 
   // DCC draft protocol for a batch of exchanges that returns wallet queries
   .post(
-    '/exchange',
+    routes.exchangeBatchCreate,
     handleErrors(async (c) => {
       return await createExchangeBatch(c)
     })
@@ -80,7 +91,7 @@ export const app = new Hono()
 
   // VC-API 0.7 as of 2025-06-08 for a single exchange.
   .post(
-    '/workflows/:workflowId/exchanges',
+    routes.exchangeCreate,
     handleErrors(async (c) => {
       return await createExchangeVcapi(c)
     })
@@ -96,7 +107,7 @@ export const app = new Hono()
   */
   // DCC draft protocol
   .post(
-    '/exchange/:exchangeId',
+    routes.legacyExchangeDetail,
     handleErrors(async (c) => {
       return await participateInExchange(c)
     })
@@ -104,7 +115,7 @@ export const app = new Hono()
 
   // VC-API 0.7 as of 2025-06-08
   .post(
-    '/workflows/:workflowId/exchanges/:exchangeId',
+    routes.exchangeDetail,
     handleErrors(async (c) => {
       return await participateInExchange(c)
     })
@@ -116,7 +127,7 @@ export const app = new Hono()
   VC-API 0.7 as of 2025-06-08: https://w3c-ccg.github.io/vc-api/#interaction-url-format
   */
   .get(
-    '/workflows/:workflowId/exchanges/:exchangeId/protocols',
+    routes.protocols,
     handleErrors(async (c) => {
       return await getInteractionsForExchange(c)
     })

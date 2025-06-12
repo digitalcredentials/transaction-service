@@ -27,7 +27,9 @@ export const initializeTransactionManager = () => {
         })
       })
     } else if (config.redisUri) {
-      keyv = new Keyv<App.Exchange>(new KeyvRedis(config.redisUri))
+      keyv = new Keyv<App.Exchange>(
+        new KeyvRedis(config.redisUri, { namespace: 'exchange' })
+      )
     } else {
       keyv = new Keyv<App.Exchange>()
     }
