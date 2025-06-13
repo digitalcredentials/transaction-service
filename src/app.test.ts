@@ -36,18 +36,26 @@ describe('api', function () {
 
   describe('POST /exchange', function () {
     test('returns 400 if no body', async function () {
-      const response = await client.exchange.$post({ body: null })
+      const response = await await app.request('/exchange', {
+        method: 'POST'
+      })
       expect(response.status).toBe(400)
       expect(response.headers.get('content-type')).toContain('json')
     })
 
     test('returns 400 if invalid JSON', async function () {
-      const response = await client.exchange.$post({ json: '{"invalid/json$' })
+      const response = await await app.request('/exchange', {
+        method: 'POST',
+        body: '{"invalid/json$',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
       expect(response.status).toBe(400)
-      const body = (await response.json()) as App.ErrorResponseBody
+      const body = (await response.json()) as unknown as App.ErrorResponseBody
       expect(response.headers.get('content-type')).toContain('json')
       expect(body.code).toBe(400)
-      expect(body.message).toContain('Invalid JSON')
+      expect(body.message).toContain('Malformed JSON')
     })
 
     test('returns array of wallet queries', async function () {
@@ -162,7 +170,7 @@ describe('api', function () {
     })
 
     test('returns error if missing batchId with subjectData', async function () {
-      const testData = getDataForExchangeSetupPost('test')
+      const testData = getDataForExchangeSetupPost('test') as App.ExchangeBatch
       // @ts-ignore
       delete testData.data[0].vc
       testData.data[0].subjectData = { hello: 'trouble' }
