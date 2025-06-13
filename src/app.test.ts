@@ -1,20 +1,18 @@
 import { expect, test, describe, beforeAll, afterAll, vi } from 'vitest'
 import { testClient } from 'hono/testing'
+import axios from 'axios'
 import crypto from 'crypto'
 import { app, type AppType } from './hono'
-import {
-  getDataForExchangeSetupPost,
-  testVC
-} from './test-fixtures/testData.js'
+import { getDataForExchangeSetupPost } from './test-fixtures/testData.js'
 import { getSignedDIDAuth } from './didAuth.js'
 import {
   saveExchange,
-  initializeTransactionManager,
-  ExchangeError
+  initializeTransactionManager
 } from './transactionManager'
 import * as transactionManager from './transactionManager'
 import * as config from './config'
-import axios from 'axios'
+
+import { HTTPException } from 'hono/http-exception'
 
 describe('api', function () {
   const client = testClient<AppType>(app)
@@ -43,12 +41,20 @@ describe('api', function () {
       expect(response.headers.get('content-type')).toContain('json')
     })
 
+    test('returns 400 if invalid JSON', async function () {
+      const response = await client.exchange.$post({ json: '{"invalid/json$' })
+      expect(response.status).toBe(400)
+      const body = (await response.json()) as App.ErrorResponseBody
+      expect(response.headers.get('content-type')).toContain('json')
+      expect(body.code).toBe(400)
+      expect(body.message).toContain('Invalid JSON')
+    })
+
     test('returns array of wallet queries', async function () {
       const testData = getDataForExchangeSetupPost('test')
       const response = await client.exchange.$post({
         json: testData
       })
-
       const body = (await response.json()) as any
       expect(response.headers.get('content-type')).toContain('json')
       expect(response.status).toBe(200)
@@ -92,8 +98,8 @@ describe('api', function () {
       })
 
       expect(exchangeResponse.headers.get('content-type')).toContain('json')
-      expect(exchangeResponse.status).toBe(200)
       const exchangeBody = await exchangeResponse.json()
+      expect(exchangeResponse.status).toBe(200)
       expect(exchangeBody).toBeDefined()
       // the didAuth exchange should not return a VC (and really this endpoint should return a VP, not a VC eh?)
       expect(exchangeBody.vc).toEqual(undefined)
@@ -178,6 +184,7 @@ describe('api', function () {
 
     test('returns error if missing retrievalId', async function () {
       const testData = getDataForExchangeSetupPost('test')
+      // @ts-ignore
       delete testData.data[0].retrievalId
       const response = await app.request('/exchange', {
         method: 'POST',
@@ -201,7 +208,7 @@ describe('api', function () {
       // Mock saveExchange to throw an error
       vi.spyOn({ saveExchange }, 'saveExchange').mockImplementation(
         async () => {
-          throw new ExchangeError(500, 'Failed to save exchange.')
+          throw new HTTPException(500, { message: 'Failed to save exchange.' })
         }
       )
     })
@@ -228,10 +235,7 @@ describe('api', function () {
       const response = await app.request(
         '/workflows/NO-SUCH-WORKFLOW/exchanges/123',
         {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          method: 'POST'
         }
       )
       expect(response.headers.get('Content-Type')).toContain('json')
@@ -246,15 +250,12 @@ describe('api', function () {
       const response = await app.request(
         '/workflows/didAuth/exchanges/NO-SUCH-EXCHANGE',
         {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          method: 'POST'
         }
       )
       expect(response.headers.get('Content-Type')).toContain('json')
       const body = await response.json()
-      expect(response.status).toBe(404) // not 400 for invalid body
+      expect(response.status).toBe(404)
       expect(body.code).toBe(404)
       expect(body.message).toBe('Unknown exchangeId.')
     })
@@ -278,7 +279,7 @@ describe('api', function () {
       const spy = vi
         .spyOn(transactionManager, 'saveExchange')
         .mockImplementation(async () => {
-          throw new ExchangeError(500, 'Failed to save exchange.')
+          throw new HTTPException(500, { message: 'Failed to save exchange.' })
         })
       const response = await client.healthz.$get()
 
@@ -359,14 +360,12 @@ describe('api', function () {
       const initiationURIPath = new URL(inititationURI).pathname
 
       const initiationResponse = await app.request(initiationURIPath, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        method: 'POST' // empty body to initiate a VC-API exchange
       })
       expect(initiationResponse.headers.get('content-type')).toContain('json')
-      expect(initiationResponse.status).toBe(200)
       const vpr = (await initiationResponse.json()) as App.VPR
+      expect(initiationResponse.status).toBe(200)
+
       expect(vpr).toBeDefined()
 
       // Step 3. mimics what the wallet does once it's got the VPR
@@ -412,14 +411,11 @@ describe('api', function () {
       const initiationURIPath = new URL(inititationURI).pathname
 
       const initiationResponse = await app.request(initiationURIPath, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        method: 'POST'
       })
       expect(initiationResponse.headers.get('content-type')).toContain('json')
-      expect(initiationResponse.status).toBe(200)
       const vpr = (await initiationResponse.json()) as App.VPR
+      expect(initiationResponse.status).toBe(200)
       expect(vpr).toBeDefined()
 
       // Step 3. mimics what the wallet does once it's got the VPR

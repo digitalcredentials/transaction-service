@@ -8,7 +8,7 @@
     "start": "node -r dotenv/config dist/server.js",
     "dev": "nodemon -r dotenv/config --exec tsx src/server.ts",
     "dev-noenv": "nodemon --exec tsx src/server.ts",
-    "test": "dotenvx run -f src/test-fixtures/.env.testing -- vitest",
+    "test": "dotenvx run -f src/test-fixtures/.env.testing -- vitest run",
     "coverage": "dotenvx run -f src/test-fixtures/.env.testing -- vitest run --coverage",
     "prepare": "husky",
     "lint": "eslint",

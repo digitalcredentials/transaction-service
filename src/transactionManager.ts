@@ -1,14 +1,14 @@
 /*!
  * Copyright (c) 2023 Digital Credentials Consortium. All rights reserved.
  */
+import { HTTPException } from 'hono/http-exception'
 import Keyv from 'keyv'
 import KeyvRedis from '@keyv/redis'
 import { KeyvFile } from 'keyv-file'
 import { getConfig } from './config'
-import { StatusCode } from 'hono/utils/http-status'
 
 // The key value store used for transaction data.
-let keyv: Keyv<App.Exchange>
+let keyv: Keyv<App.ExchangeDetail>
 
 /**
  * Intializes the keyv store either in-memory or in file system, according to env.
@@ -17,7 +17,7 @@ export const initializeTransactionManager = () => {
   const config = getConfig()
   if (!keyv) {
     if (config.keyvFilePath) {
-      keyv = new Keyv<App.Exchange>({
+      keyv = new Keyv<App.ExchangeDetail>({
         store: new KeyvFile({
           filename: config.keyvFilePath,
           expiredCheckDelay: config.keyvExpiredCheckDelayMs, // How often to check for and remove expired records
@@ -27,18 +27,18 @@ export const initializeTransactionManager = () => {
         })
       })
     } else if (config.redisUri) {
-      keyv = new Keyv<App.Exchange>(
+      keyv = new Keyv<App.ExchangeDetail>(
         new KeyvRedis(config.redisUri, { namespace: 'exchange' })
       )
     } else {
-      keyv = new Keyv<App.Exchange>()
+      keyv = new Keyv<App.ExchangeDetail>()
     }
   }
 }
 initializeTransactionManager() // call immediately to ensure keyv is initialized
 
 /**
- * @throws {App.ExchangeError} Unknown exchangeID
+ * @throws {} Unknown exchangeID
  * @returns returns stored data if exchangeId exists
  */
 export const getExchangeData = async (
@@ -47,7 +47,7 @@ export const getExchangeData = async (
 ) => {
   const storedData = await keyv.get(exchangeId)
   if (!storedData || storedData.workflowId !== workflowId) {
-    throw new ExchangeError(404, 'Unknown exchangeId.')
+    throw new HTTPException(404, { message: 'Unknown exchangeId.' })
   }
   return storedData
 }
@@ -56,10 +56,11 @@ export const getExchangeData = async (
  * Sets up one exchange and save it to Keyv. The local exchangeId is used as the key for the
  * record. Success/Failure boolean is returned.
  */
-export const saveExchange = async (data: App.Exchange) => {
-  const success = await keyv.set(data.exchangeId, data, data.ttl * 1000)
+export const saveExchange = async (data: App.ExchangeDetail) => {
+  const ttl = new Date(data.expires).getTime() - Date.now() + 1000
+  const success = await keyv.set(data.exchangeId, data, ttl)
   if (!success) {
-    throw new ExchangeError(500, 'Failed to save exchange.')
+    throw new HTTPException(500, { message: 'Failed to save exchange.' })
   }
   return success
 }
@@ -68,8 +69,8 @@ export const saveExchange = async (data: App.Exchange) => {
  * This returns the authentication vpr as described in
  * https://w3c-ccg.github.io/vp-request-spec/#did-authentication
  */
-export const getDIDAuthVPR = (exchange: App.Exchange) => {
-  const serviceEndpoint = `${exchange.exchangeHost}/workflows/${exchange.workflowId}/exchanges/${exchange.exchangeId}`
+export const getDIDAuthVPR = (exchange: App.ExchangeDetail) => {
+  const serviceEndpoint = `${exchange.variables.exchangeHost}/workflows/${exchange.workflowId}/exchanges/${exchange.exchangeId}`
 
   return {
     query: {
@@ -90,8 +91,8 @@ export const getDIDAuthVPR = (exchange: App.Exchange) => {
         }
       ]
     },
-    challenge: exchange.challenge,
-    domain: exchange.exchangeHost
+    challenge: exchange.variables.challenge,
+    domain: exchange.variables.exchangeHost
   }
 }
 
@@ -101,13 +102,4 @@ export const getDIDAuthVPR = (exchange: App.Exchange) => {
 export const clearKeyv = () => {
   // @ts-ignore
   keyv = undefined
-}
-
-export class ExchangeError extends Error {
-  code: StatusCode
-  constructor(code: StatusCode, message: string) {
-    super(message)
-    this.code = code
-    this.name = 'ExchangeError'
-  }
 }

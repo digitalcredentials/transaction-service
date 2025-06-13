@@ -1,8 +1,7 @@
 import { Hono, type Context } from 'hono'
 import { logger } from 'hono/logger'
 import { cors } from 'hono/cors'
-
-import { ExchangeError } from './transactionManager'
+import { createMiddleware } from 'hono/factory'
 import {
   createExchangeBatch,
   createExchangeVcapi,
@@ -10,33 +9,77 @@ import {
   participateInExchange
 } from './exchanges'
 import { healthCheck } from './health'
+import { HTTPException } from 'hono/http-exception'
+import * as schema from './schema'
+import { validator } from 'hono/validator'
+import z from 'zod'
+import { JSONObject } from 'hono/utils/types'
+import { getWorkflow } from './workflows'
+import { getConfig } from './config'
+import { getExchangeData } from './transactionManager'
 
 /**
  * Wraps a Hono handler with error handling
  * @param {Function} viewHandler - The Hono handler to wrap
  * @returns {Function} Hono middleware function
  */
-const handleErrors = (viewHandler: (c: Context) => Promise<Response>) => {
-  return async (c: Context) => {
-    try {
-      return await viewHandler(c)
-    } catch (error) {
-      if (error instanceof ExchangeError) {
-        c.status(error.code)
-        return c.json({
-          code: error.code,
-          message: error.message
-        })
-      } else {
-        console.error('Unexpected error:', error)
-        c.status(500)
-        return c.json({
-          error: 'An unexpected error occurred'
-        })
-      }
-    }
+const handleErrors = (err: unknown, c: Context) => {
+  if (err instanceof HTTPException) {
+    c.status(err.status)
+    return c.json({
+      code: err.status,
+      message: err.message
+    })
+  } else if (err instanceof z.ZodError) {
+    c.status(400)
+    return c.json({
+      code: 400,
+      message: err.errors.map((e) => e.message).join(', '),
+      details: err.errors
+    })
+  } else {
+    console.error('Unexpected error:', err)
+    c.status(500)
+    return c.json({
+      code: 500,
+      message: 'An unexpected error occurred'
+    })
   }
 }
+
+// Validation
+
+const validateJson = (value: JSONObject, c: Context) => {
+  // pass-through validator, will get failures if the JSON is invalid
+  return value
+}
+
+const addWorkflowByParam = createMiddleware<{
+  Variables: {
+    workflow: App.Workflow
+  }
+}>(async (c, next) => {
+  const param = c.req.param('workflowId')
+  if (param) {
+    const workflow = getWorkflow(param)
+    if (!workflow) {
+      throw new HTTPException(404, { message: 'Workflow not found' })
+    }
+    c.set('workflow', workflow)
+  }
+  await next()
+})
+
+// Middleware
+const setConfigContext = createMiddleware<{
+  Variables: {
+    config: App.Config
+    workflow?: App.Workflow
+  }
+}>(async (c, next) => {
+  c.set('config', getConfig())
+  await next()
+})
 
 /** A listing of all application routes */
 const routes = {
@@ -54,25 +97,24 @@ export const app = new Hono()
   .notFound((c) => {
     return c.json({ code: 404, message: 'Not found' }, 404)
   })
+  .onError(handleErrors)
 
   .use(logger())
   .use(cors())
+  .use(setConfigContext)
+
+  // Config Handler adds config to the context
+  .use(async (c, next) => {
+    await next()
+  })
 
   // Basic health check
-  .get(
-    routes.index,
-    handleErrors(async (c) => {
-      return c.json({ message: 'transaction-service server status: ok.' })
-    })
-  )
+  .get(routes.index, async (c) => {
+    return c.json({ message: 'transaction-service server status: ok.' })
+  })
 
   // Extended health check
-  .get(
-    routes.healthz,
-    handleErrors(async (c) => {
-      return await healthCheck(c)
-    })
-  )
+  .get(routes.healthz, healthCheck)
 
   /*
   This is step 1 in an exchange. Creates a new exchange and stores the provided data for later use
@@ -84,17 +126,37 @@ export const app = new Hono()
   // DCC draft protocol for a batch of exchanges that returns wallet queries
   .post(
     routes.exchangeBatchCreate,
-    handleErrors(async (c) => {
-      return await createExchangeBatch(c)
-    })
+    validator('json', validateJson),
+    async (c) => {
+      const body = c.req.valid('json')
+      const data = schema.exchangeBatchSchema.parse(body)
+      c.set('workflow', getWorkflow(data.workflowId ?? 'didAuth'))
+      return c.json(
+        await createExchangeBatch({
+          data,
+          config: c.var.config,
+          workflow: c.var.workflow!
+        })
+      )
+    }
   )
 
   // VC-API 0.7 as of 2025-06-08 for a single exchange.
   .post(
     routes.exchangeCreate,
-    handleErrors(async (c) => {
-      return await createExchangeVcapi(c)
-    })
+    validator('json', validateJson),
+    addWorkflowByParam,
+    async (c) => {
+      const inputData = c.req.valid('json')
+      const data = schema.vcApiExchangeCreateSchema.parse(inputData)
+      return c.json(
+        await createExchangeVcapi({
+          data,
+          config: c.var.config,
+          workflow: c.var.workflow
+        })
+      )
+    }
   )
 
   /*
@@ -108,17 +170,43 @@ export const app = new Hono()
   // DCC draft protocol
   .post(
     routes.legacyExchangeDetail,
-    handleErrors(async (c) => {
-      return await participateInExchange(c)
-    })
+    validator('json', validateJson),
+    async (c) => {
+      c.set('workflow', getWorkflow('didAuth'))
+      const exchange = await getExchangeData(
+        c.req.param('exchangeId')!,
+        c.var.workflow!.id
+      )
+      return c.json(
+        await participateInExchange({
+          data: null,
+          config: c.var.config,
+          workflow: c.var.workflow!,
+          exchange
+        })
+      )
+    }
   )
 
   // VC-API 0.7 as of 2025-06-08
   .post(
     routes.exchangeDetail,
-    handleErrors(async (c) => {
-      return await participateInExchange(c)
-    })
+    validator('json', validateJson),
+    addWorkflowByParam,
+    async (c) => {
+      const exchange = await getExchangeData(
+        c.req.param('exchangeId')!,
+        c.var.workflow.id
+      )
+      return c.json(
+        await participateInExchange({
+          data: c.req.valid('json'),
+          config: c.var.config,
+          workflow: c.var.workflow,
+          exchange
+        })
+      )
+    }
   )
 
   /* Cross-protocol interactions object. The URL for (the exchangeHost proxy for) this endpoint is
@@ -126,11 +214,6 @@ export const app = new Hono()
   interact with this exchange. Eventually we'll use this URL as QR code contents for wallet to scan.
   VC-API 0.7 as of 2025-06-08: https://w3c-ccg.github.io/vc-api/#interaction-url-format
   */
-  .get(
-    routes.protocols,
-    handleErrors(async (c) => {
-      return await getInteractionsForExchange(c)
-    })
-  )
+  .get(routes.protocols, getInteractionsForExchange)
 
 export type AppType = typeof app

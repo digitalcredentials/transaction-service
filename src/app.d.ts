@@ -14,6 +14,16 @@ declare global {
       keyvExpiredCheckDelayMs: number
     }
 
+    interface ErrorResponseBody {
+      code: number
+      message: string
+      details?: Array<{
+        code: string
+        message: string
+        path: Array<string>
+      }>
+    }
+
     interface Credential extends Record<string, unknown> {
       credentialSubject: Record<string, unknown> & {
         id: string
@@ -34,16 +44,33 @@ declare global {
       workflowId?: string
     }
 
-    interface Exchange {
-      workflowId: string
-      exchangeId: string
-      challenge: string
-      tenantName: string
-      exchangeHost: string
-      ttl: number // Expressed in seconds
+    interface ExchangeCreateInput {
+      expires?: string
       variables: Record<string, unknown> & {
         vc?: string
         redirectUrl?: string
+        exchangeHost: string
+        tenantName: string
+        challenge?: string
+      }
+    }
+
+    interface ExchangeDetail {
+      // Local metadata
+      tenantName: string
+      workflowId: string
+
+      // VC-API metadata
+      exchangeId: string
+      expires: string
+      state: 'pending' | 'active' | 'completed' | 'invalid'
+      variables: {
+        vc?: string
+        redirectUrl?: string
+        retrievalId?: string
+        exchangeHost: string
+        metadata?: Record<string, unknown>
+        challenge: string // Used to authenticate presentations
       }
     }
 

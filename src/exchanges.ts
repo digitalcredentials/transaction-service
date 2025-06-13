@@ -1,20 +1,18 @@
 import {
   saveExchange,
   getExchangeData,
-  getDIDAuthVPR,
-  ExchangeError
+  getDIDAuthVPR
 } from './transactionManager'
 import axios from 'axios'
+import type { Context } from 'hono'
 // @ts-expect-error createPresentation is untyped
 import { createPresentation } from '@digitalbazaar/vc'
 import crypto from 'crypto'
-import { getConfig } from './config'
-import { getWorkflow } from './workflows'
 import * as Handlebars from 'handlebars'
+import { HTTPException } from 'hono/http-exception'
 import * as https from 'https'
+import * as schema from './schema'
 import { verifyDIDAuth } from './didAuth'
-import { z } from 'zod'
-import type { Context } from 'hono'
 
 export const callService = async (
   endpoint: string,
@@ -29,102 +27,33 @@ export const callService = async (
   return data
 }
 
-const validateWorkflow = (workflowId: string) => {
-  const workflow = getWorkflow(workflowId)
-  if (!workflow) {
-    throw new ExchangeError(404, 'Unknown workflow.')
-  }
-  return workflow
-}
-
-const CredentialDataSchema = z
-  .object({
-    vc: z
-      .union([z.string(), z.object({})])
-      .optional()
-      .transform((vcData, ctx) => {
-        if (typeof vcData !== 'string') {
-          // Sets template to be a string
-          try {
-            return JSON.stringify(vcData)
-          } catch (error) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: 'Invalid VC data - must be a string or valid JSON object'
-            })
-            return z.NEVER
-          }
-        }
-        return vcData
-      }),
-    subjectData: z.any().optional(),
-    retrievalId: z.string({
-      message:
-        "Incomplete exchange data - every submitted record must have it's own retrievalId."
-    }),
-    redirectUrl: z.string().optional()
-  })
-  .refine((data) => [data.vc, data.subjectData].some((d) => d !== undefined), {
-    message:
-      'Incomplete exchange data - you must provide either a vc or subjectData'
-  })
-
-const ExchangeDataSchema = z
-  .object({
-    exchangeHost: z.string({
-      message: 'Incomplete exchange data - you must provide an exchangeHost'
-    }),
-    tenantName: z.string({
-      message: 'Incomplete exchange data - you must provide a tenant name'
-    }),
-    batchId: z.string().optional(),
-    workflowId: z.enum(['didAuth', 'claim']).optional(),
-    data: z.array(CredentialDataSchema)
-  })
-  .refine(
-    (d) => d.data.some((dd) => dd.subjectData !== undefined) == !!d.batchId,
-    {
-      message:
-        'Incomplete exchange data - if you provide subjectData, you must also provide a batchId'
-    }
-  )
-
 /** Allows the creation of one or a batch of exchanges for a particular tenant. */
-export const createExchangeBatch = async (c: Context) => {
-  const config = getConfig()
-  let requestData: App.ExchangeBatch
-  try {
-    const body = await c.req.json()
-    requestData = ExchangeDataSchema.parse(body) as App.ExchangeBatch
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      const i = error.issues[0]
-      throw new ExchangeError(
-        400,
-        `${i.code} error at ${JSON.stringify(i.path ?? '')}: ${i.message}`
-      )
-    } else if (error instanceof SyntaxError) {
-      throw new ExchangeError(400, 'Invalid JSON')
-    }
-    throw error
-  }
-
-  const exchangeRequests: App.Exchange[] = requestData.data.map((d) => {
+export const createExchangeBatch = async ({
+  data,
+  config,
+  workflow
+}: {
+  data: App.ExchangeBatch
+  config: App.Config
+  workflow: App.Workflow
+}) => {
+  const exchangeRequests: App.ExchangeDetail[] = data.data.map((d) => {
     return {
       exchangeId: crypto.randomUUID(),
-      challenge: crypto.randomUUID(),
-      exchangeHost: requestData.exchangeHost,
-      tenantName: requestData.tenantName,
-      ttl: config.exchangeTtl,
-      batchId: requestData.batchId,
+      tenantName: data.tenantName,
+      expires: new Date(Date.now() + config.exchangeTtl * 1000).toISOString(),
+      batchId: data.batchId,
       variables: {
+        challenge: crypto.randomUUID(),
+        exchangeHost: data.exchangeHost,
         ...(d.vc && { vc: d.vc }),
         ...(d.redirectUrl && { redirectUrl: d.redirectUrl }),
         ...(d.subjectData && { subjectData: d.subjectData }),
         ...(d.retrievalId && { retrievalId: d.retrievalId }),
         ...(d.metadata && { metadata: d.metadata })
       },
-      workflowId: requestData.workflowId ?? 'didAuth'
+      workflowId: workflow.id,
+      state: 'pending'
     }
   })
 
@@ -142,77 +71,76 @@ export const createExchangeBatch = async (c: Context) => {
       metadata: e.variables.metadata
     }
   })
-  return c.json(walletQueries)
+  return walletQueries
 }
 
-const vcApiExchangeDataSchema = z.object({
-  variables: z.object({
-    exchangeHost: z
-      .string()
-      .optional()
-      .default(process.env.DEFAULT_EXCHANGE_HOST ?? 'http://localhost:4004'),
-    tenantName: z.string(),
-    batchId: z.string().optional(),
-    vc: z.any()
-  })
-})
+export const createExchangeVcapi = async ({
+  data,
+  config,
+  workflow
+}: {
+  data: App.ExchangeCreateInput
+  config: App.Config
+  workflow: App.Workflow
+}) => {
+  const inputData = schema.vcApiExchangeCreateSchema.parse(data)
 
-export const createExchangeVcapi = async (c: Context) => {
-  // There is a legacy URL path that doesn't include the workflowId.
-  const workflowId = c.req.param('workflowId') ?? 'claim'
-  const workflow = validateWorkflow(workflowId)
-
-  const data = await c.req.json()
-  if (!data || !Object.keys(data).length) {
-    c.status(400)
-    return c.json({ code: 400, message: 'No exchange creation data provided.' })
+  const exchangeInput: App.ExchangeDetail = {
+    ...inputData,
+    workflowId: workflow.id,
+    tenantName: data.variables.tenantName,
+    exchangeId: crypto.randomUUID(),
+    variables: {
+      ...inputData.variables,
+      challenge: crypto.randomUUID()
+    },
+    expires:
+      inputData.expires ??
+      new Date(Date.now() + config.exchangeTtl * 1000).toISOString(),
+    state: 'pending'
   }
+
   await saveExchange(data)
-  const protocols = getProtocols(data)
-  return c.json(protocols)
+  return getProtocols(data)
 }
 
-export const participateInExchange = async (c: Context) => {
-  const workflow = validateWorkflow(c.req.param('workflowId') ?? 'claim')
-  const exchange = await getExchangeData(c.req.param('exchangeId'), workflow.id)
-
-  const config = getConfig()
-  let requestBody
-  try {
-    requestBody = await c.req.json()
-  } catch {
-    requestBody = null
-  }
-
-  if (!requestBody || !Object.keys(requestBody).length) {
+export const participateInExchange = async ({
+  data,
+  config,
+  workflow,
+  exchange
+}: {
+  data: any
+  config: App.Config
+  workflow: App.Workflow
+  exchange: App.ExchangeDetail
+}) => {
+  if (!data || !Object.keys(data).length) {
     // If there is no body, this is the initial step of the exchange.
     // We will reply with a VPR to authenticate the wallet.
     const vpr = await getDIDAuthVPR(exchange)
-    return c.json(vpr)
+    return vpr
   } else {
     // This is the second step of the exchange, we will verify the DIDAuth and return the
     // previously stored data for the exchange.
-    const didAuth = requestBody
     const didAuthVerified = await verifyDIDAuth({
-      presentation: didAuth,
-      challenge: exchange.challenge
+      presentation: data,
+      challenge: exchange.variables.challenge
     })
 
     if (!didAuthVerified) {
-      c.status(401)
-      return c.json({
-        code: 401,
+      throw new HTTPException(401, {
         message: 'Invalid DIDAuth.'
       })
     }
 
-    const credentialTemplate = workflow.credentialTemplates?.[0]
+    const credentialTemplate = workflow?.credentialTemplates?.[0]
     if (!credentialTemplate || exchange.workflowId == 'didAuth') {
       // TODO: this path won't be hit for now, but we eventually should support redirection to a
       // url set in exchange variables at exchange creation time.
-      return c.json({
+      return {
         redirectUrl: exchange.variables.redirectUrl ?? ''
-      })
+      }
     }
 
     // The 'claim' workflow has a template that expects a `vc` variable of the built credential
@@ -223,11 +151,9 @@ export const participateInExchange = async (c: Context) => {
         credentialTemplate.template
       )(exchange.variables)
       credential = JSON.parse(builtCredential)
-      credential.credentialSubject.id = didAuth.holder
+      credential.credentialSubject.id = data.holder
     } catch (error) {
-      c.status(400)
-      return c.json({
-        code: 400,
+      throw new HTTPException(400, {
         message: 'Failed to build credential from template'
       })
     }
@@ -248,22 +174,24 @@ export const participateInExchange = async (c: Context) => {
     verifiablePresentation.verifiableCredential = [signedCredential]
 
     // VC-API indicates we would wrap this in a presentation, but wallet probably doesn't expect that yet.
-    return c.json({
+    return {
       response: { verifiablePresentation },
       format: 'application/vc'
-    })
+    }
   }
 }
 
-export const getProtocols = (exchange: App.Exchange) => {
+export const getProtocols = (exchange: App.ExchangeDetail) => {
   const verifiablePresentationRequest = getDIDAuthVPR(exchange)
   const serviceEndpoint =
     verifiablePresentationRequest.interact.service[0].serviceEndpoint ?? ''
   const protocols = {
     iu: `${serviceEndpoint}/protocols?iuv=1`,
     vcapi: serviceEndpoint,
+    // TODO issuer shouldn't be hardcoded. Where can we get the issuer DID value for the tenant?
+    // Wallet doesn't seem to reject this hardcoded issuer.
     lcw: `https://lcw.app/request.html?issuer=issuer.example.com&auth_type=bearer&challenge=${
-      exchange.challenge
+      exchange.variables.challenge
     }&vc_request_url=${encodeURIComponent(serviceEndpoint)}`,
     verifiablePresentationRequest
     // TODO: add "oid4vci" support (claim workflow)

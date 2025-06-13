@@ -5,7 +5,7 @@ const getDataForExchangeSetupPost = (
   exchangeHost = 'http://localhost:4005',
   workflowId = 'didAuth'
 ) => {
-  const fakeData: App.ExchangeBatch = {
+  const fakeData = {
     tenantName,
     workflowId,
     exchangeHost,

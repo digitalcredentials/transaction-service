@@ -42,6 +42,8 @@ const workflows: Record<string, App.Workflow> = {
 /**
  * Gets a supported workflow by ID.
  */
-export const getWorkflow = (workflowId: string): App.Workflow | undefined => {
+export const getWorkflow = (
+  workflowId: keyof typeof workflows
+): App.Workflow => {
   return workflows[workflowId]
 }
