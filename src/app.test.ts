@@ -453,13 +453,9 @@ describe('api', function () {
 
       // First verify the basic structure
       expect(body.redirectUrl).toBeUndefined()
-      expect(body.response.verifiablePresentation).toBeDefined()
-      expect(
-        body.response.verifiablePresentation.verifiableCredential
-      ).toBeDefined()
-      expect(
-        body.response.verifiablePresentation.verifiableCredential.length
-      ).toBe(1) // It will just be the mocked {}
+      expect(body.type).toBeDefined() // ["VerifiablePresentation"]
+      expect(body.verifiableCredential).toBeDefined()
+      expect(body.verifiableCredential.length).toBe(1) // It will just be the mocked {}
     })
   })
 })

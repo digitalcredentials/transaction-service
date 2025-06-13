@@ -9,11 +9,15 @@ const defaultTenantName = 'test'
 const defaultTtlSeconds = 60 * 10 // exchange expires after ten minutes
 
 const parseConfig = (): App.Config => {
-  return {
+  return Object.freeze({
     port: parseInt(process.env.PORT ?? '0') || defaultPort,
     exchangeHost: process.env.EXCHANGE_HOST ?? defaultExchangeHost,
     exchangeTtl: parseInt(process.env.EXCHANGE_TTL ?? '0') || defaultTtlSeconds,
-    statusService: process.env.STATUS_SERVICE ?? defaultStatusService,
+    // status service is optional, set STATUS_SERVICE="" (empty string) to disable.
+    statusService:
+      process.env.STATUS_SERVICE !== undefined
+        ? process.env.STATUS_SERVICE
+        : defaultStatusService,
     signingService: process.env.SIGNING_SERVICE ?? defaultSigningService,
     defaultWorkflow: process.env.DEFAULT_WORKFLOW ?? defaultWorkflow,
     defaultTenantName: process.env.DEFAULT_TENANT_NAME ?? defaultTenantName,
@@ -24,7 +28,7 @@ const parseConfig = (): App.Config => {
     keyvWriteDelayMs: parseInt(process.env.KEYV_WRITE_DELAY ?? '0') || 100, // 100ms
     keyvExpiredCheckDelayMs:
       parseInt(process.env.KEYV_EXPIRED_CHECK_DELAY ?? '0') || 4 * 3600 * 1000 // 4 hours
-  }
+  })
 }
 
 export const getConfig = () => {

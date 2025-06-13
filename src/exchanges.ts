@@ -8,7 +8,7 @@ import type { Context } from 'hono'
 // @ts-expect-error createPresentation is untyped
 import { createPresentation } from '@digitalbazaar/vc'
 import crypto from 'crypto'
-import * as Handlebars from 'handlebars'
+import Handlebars from 'handlebars'
 import { HTTPException } from 'hono/http-exception'
 import * as https from 'https'
 import * as schema from './schema'
@@ -85,7 +85,7 @@ export const createExchangeVcapi = async ({
 }) => {
   const inputData = schema.vcApiExchangeCreateSchema.parse(data)
 
-  const exchangeInput: App.ExchangeDetail = {
+  const exchange: App.ExchangeDetail = {
     ...inputData,
     workflowId: workflow.id,
     tenantName: data.variables.tenantName,
@@ -100,8 +100,8 @@ export const createExchangeVcapi = async ({
     state: 'pending'
   }
 
-  await saveExchange(data)
-  return getProtocols(data)
+  await saveExchange(exchange)
+  return getProtocols(exchange)
 }
 
 export const participateInExchange = async ({
@@ -166,7 +166,7 @@ export const participateInExchange = async ({
       )
     }
     const signedCredential = await callService(
-      `http://${config.signingService}/instance/${exchange.tenantName}/credentials/sign`,
+      `${config.signingService}/instance/${exchange.tenantName}/credentials/sign`,
       credential
     )
     // generate VP to return VCs
@@ -174,10 +174,7 @@ export const participateInExchange = async ({
     verifiablePresentation.verifiableCredential = [signedCredential]
 
     // VC-API indicates we would wrap this in a presentation, but wallet probably doesn't expect that yet.
-    return {
-      response: { verifiablePresentation },
-      format: 'application/vc'
-    }
+    return verifiablePresentation
   }
 }
 

@@ -86,7 +86,7 @@ const routes = {
   index: '/',
   healthz: '/healthz',
   exchangeBatchCreate: '/exchange',
-  legacyExchangeDetail: '/exchange/:exchangeId',
+  legacyExchangeDetail: '/exchange/:exchangeId', // This might not be used anymore if it is not referenced by the exchange creation
   exchangeCreate: '/workflows/:workflowId/exchanges',
   exchangeDetail: '/workflows/:workflowId/exchanges/:exchangeId',
   protocols: '/workflows/:workflowId/exchanges/:exchangeId/protocols'
