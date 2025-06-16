@@ -27,6 +27,7 @@ export const initializeTransactionManager = () => {
         })
       })
     } else if (config.redisUri) {
+      console.log("Using redis backend for Keyv");
       keyv = new Keyv<App.ExchangeDetail>(
         new KeyvRedis(config.redisUri, { namespace: 'exchange' })
       )
