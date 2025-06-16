@@ -9,11 +9,13 @@ export const healthCheck = async (c: Context) => {
     const success = await saveExchange({
       exchangeId: `healthz-${timestamp}`,
       workflowId: 'healthz',
-      challenge: '',
       tenantName: 'healthz',
-      exchangeHost: '',
-      ttl: 60 * 60, // Persist in Keyv for 1 hour
-      variables: {}
+      expires: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1 hour from now
+      state: 'pending' as const,
+      variables: {
+        exchangeHost: '',
+        challenge: ''
+      }
     })
     if (!success) {
       throw new Error('Failed to save exchange to Keyv')
