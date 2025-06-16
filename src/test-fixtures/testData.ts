@@ -1,15 +1,17 @@
 import testVC from './testVC.js'
 
 const getDataForExchangeSetupPost = (
-  tenantName,
-  exchangeHost = 'http://localhost:4005'
+  tenantName: string,
+  exchangeHost = 'http://localhost:4005',
+  workflowId = 'didAuth'
 ) => {
   const fakeData = {
     tenantName,
+    workflowId,
     exchangeHost,
     data: [
-      { vc: testVC, retrievalId: 'someId' },
-      { vc: testVC, retrievalId: 'blah' }
+      { vc: JSON.stringify(testVC), retrievalId: 'someId' },
+      { vc: JSON.stringify(testVC), retrievalId: 'blah' }
     ]
   }
   return fakeData
