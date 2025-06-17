@@ -2,15 +2,15 @@ import { expect, test, describe, beforeAll, afterAll, vi } from 'vitest'
 import { testClient } from 'hono/testing'
 import axios from 'axios'
 import crypto from 'crypto'
-import { app, type AppType } from './hono'
+import { app, type AppType } from './hono.js'
 import { getDataForExchangeSetupPost } from './test-fixtures/testData.js'
 import { getSignedDIDAuth } from './didAuth.js'
 import {
   saveExchange,
   initializeTransactionManager
-} from './transactionManager'
-import * as transactionManager from './transactionManager'
-import * as config from './config'
+} from './transactionManager.js'
+import * as transactionManager from './transactionManager.js'
+import * as config from './config.js'
 
 import { HTTPException } from 'hono/http-exception'
 

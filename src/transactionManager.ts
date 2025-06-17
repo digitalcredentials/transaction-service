@@ -5,7 +5,7 @@ import { HTTPException } from 'hono/http-exception'
 import Keyv from 'keyv'
 import KeyvRedis from '@keyv/redis'
 import { KeyvFile } from 'keyv-file'
-import { getConfig } from './config'
+import { getConfig } from './config.js'
 
 // The key value store used for transaction data.
 let keyv: Keyv<App.ExchangeDetail>

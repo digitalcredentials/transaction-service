@@ -2,7 +2,7 @@ import {
   saveExchange,
   getExchangeData,
   getDIDAuthVPR
-} from './transactionManager'
+} from './transactionManager.js'
 import axios from 'axios'
 import type { Context } from 'hono'
 // @ts-expect-error createPresentation is untyped
@@ -11,8 +11,8 @@ import crypto from 'crypto'
 import Handlebars from 'handlebars'
 import { HTTPException } from 'hono/http-exception'
 import * as https from 'https'
-import * as schema from './schema'
-import { verifyDIDAuth } from './didAuth'
+import * as schema from './schema.js'
+import { verifyDIDAuth } from './didAuth.js'
 
 export const callService = async (
   endpoint: string,

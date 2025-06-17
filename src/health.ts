@@ -1,4 +1,4 @@
-import { getConfig } from './config'
+import { getConfig } from './config.js'
 import { getExchangeData, saveExchange } from './transactionManager.js'
 import type { Context } from 'hono'
 

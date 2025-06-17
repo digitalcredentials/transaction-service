@@ -7,16 +7,16 @@ import {
   createExchangeVcapi,
   getInteractionsForExchange,
   participateInExchange
-} from './exchanges'
-import { healthCheck } from './health'
+} from './exchanges.js'
+import { healthCheck } from './health.js'
 import { HTTPException } from 'hono/http-exception'
-import * as schema from './schema'
+import * as schema from './schema.js'
 import { validator } from 'hono/validator'
 import z from 'zod'
 import { JSONObject } from 'hono/utils/types'
-import { getWorkflow } from './workflows'
-import { getConfig } from './config'
-import { getExchangeData } from './transactionManager'
+import { getWorkflow } from './workflows.js'
+import { getConfig } from './config.js'
+import { getExchangeData } from './transactionManager.js'
 
 /**
  * Wraps a Hono handler with error handling
