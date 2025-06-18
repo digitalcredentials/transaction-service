@@ -27,9 +27,13 @@ export const initializeTransactionManager = () => {
         })
       })
     } else if (config.redisUri) {
-      console.log("Using redis backend for Keyv");
+      console.log("Using redis backend for Keyv: " + config.redisUri);
+      const hasPort = config.redisUri.includes("6379");
       keyv = new Keyv<App.ExchangeDetail>(
-        new KeyvRedis(config.redisUri, { namespace: 'exchange' })
+        new KeyvRedis({
+          url: hasPort ? config.redisUri : `rediss://${config.redisUri}:6379`,
+          socket: { tls: hasPort ? false : true }
+        }, { namespace: 'exchange' })
       )
     } else {
       keyv = new Keyv<App.ExchangeDetail>()
