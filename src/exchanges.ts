@@ -151,6 +151,7 @@ export const participateInExchange = async ({
         credentialTemplate.template
       )(exchange.variables)
       credential = JSON.parse(builtCredential)
+      console.log(credential)
       credential.credentialSubject.id = data.holder
     } catch (error) {
       console.log(error)
