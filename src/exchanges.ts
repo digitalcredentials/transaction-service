@@ -153,6 +153,7 @@ export const participateInExchange = async ({
       credential = JSON.parse(builtCredential)
       credential.credentialSubject.id = data.holder
     } catch (error) {
+      console.log(error)
       throw new HTTPException(400, {
         message: 'Failed to build credential from template'
       })
