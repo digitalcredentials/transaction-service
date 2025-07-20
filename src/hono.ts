@@ -8,6 +8,7 @@ import {
   getInteractionsForExchange,
   participateInExchange
 } from './exchanges.js'
+import { authenticateTenantMiddleware } from './auth.js'
 import { healthCheck } from './health.js'
 import { HTTPException } from 'hono/http-exception'
 import * as schema from './schema.js'
@@ -126,10 +127,19 @@ export const app = new Hono()
   // DCC draft protocol for a batch of exchanges that returns wallet queries
   .post(
     routes.exchangeBatchCreate,
+    authenticateTenantMiddleware,
     validator('json', validateJson),
     async (c) => {
       const body = c.req.valid('json')
       const data = schema.exchangeBatchSchema.parse(body)
+      const authEnabled = c.var.config.tenantAuthenticationEnabled
+      if (
+        authEnabled &&
+        c.var.authTenant &&
+        c.var.authTenant.tenantName !== data.tenantName
+      ) {
+        throw new HTTPException(401, { message: 'Unauthorized' })
+      }
       c.set('workflow', getWorkflow(data.workflowId ?? 'didAuth'))
       return c.json(
         await createExchangeBatch({
@@ -144,11 +154,20 @@ export const app = new Hono()
   // VC-API 0.7 as of 2025-06-08 for a single exchange.
   .post(
     routes.exchangeCreate,
+    authenticateTenantMiddleware,
     validator('json', validateJson),
     addWorkflowByParam,
     async (c) => {
       const inputData = c.req.valid('json')
       const data = schema.vcApiExchangeCreateSchema.parse(inputData)
+      const authEnabled = c.var.config.tenantAuthenticationEnabled
+      if (
+        authEnabled &&
+        c.var.authTenant &&
+        c.var.authTenant.tenantName !== data.variables.tenantName
+      ) {
+        throw new HTTPException(401, { message: 'Unauthorized' })
+      }
       return c.json(
         await createExchangeVcapi({
           data,
@@ -206,6 +225,29 @@ export const app = new Hono()
           exchange
         })
       )
+    }
+  )
+
+  // Get Exchange State
+  .get(
+    routes.exchangeDetail,
+    authenticateTenantMiddleware,
+    addWorkflowByParam,
+    async (c) => {
+      const exchange = await getExchangeData(
+        c.req.param('exchangeId')!,
+        c.var.workflow.id
+      )
+      const authEnabled = c.var.config.tenantAuthenticationEnabled
+      if (
+        authEnabled &&
+        c.var.authTenant &&
+        c.var.authTenant.tenantName !== exchange?.tenantName
+      ) {
+        throw new HTTPException(401, { message: 'Unauthorized' })
+      }
+
+      return c.json(exchange)
     }
   )
 

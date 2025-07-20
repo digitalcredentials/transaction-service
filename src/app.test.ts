@@ -59,7 +59,7 @@ describe('api', function () {
     })
 
     test('returns array of wallet queries', async function () {
-      const testData = getDataForExchangeSetupPost('test')
+      const testData = getDataForExchangeSetupPost('default')
       const response = await client.exchange.$post({
         json: testData
       })
@@ -72,7 +72,7 @@ describe('api', function () {
     })
 
     test('successful DID auth exchange from batch creation', async function () {
-      const testData = getDataForExchangeSetupPost('test')
+      const testData = getDataForExchangeSetupPost('default')
       const response = await client.exchange.$post({ json: testData })
       expect(response.headers.get('content-type')).toContain('json')
       const body = (await response.json()) as any
@@ -306,14 +306,15 @@ describe('api', function () {
       vi.spyOn(axios, 'post').mockImplementation(() =>
         Promise.resolve({ data: {} })
       ) // signing
-    })
 
-    const currentConfig = config.getConfig()
-    vi.spyOn(config, 'getConfig').mockImplementation(() => {
-      return {
-        ...currentConfig,
-        statusService: ''
-      }
+      const currentConfig = config.getConfig()
+      vi.spyOn(config, 'getConfig').mockImplementation(() => {
+        return {
+          ...currentConfig,
+          statusService: '',
+          tenantAuthenticationEnabled: false
+        }
+      })
     })
 
     afterAll(() => {
@@ -462,7 +463,7 @@ describe('api', function () {
 
 const doSetup = async (app: AppType, workflowId = 'didAuth') => {
   const testData = getDataForExchangeSetupPost(
-    'test',
+    'default',
     'http://localhost:4005',
     workflowId
   )
@@ -475,8 +476,8 @@ const doSetup = async (app: AppType, workflowId = 'didAuth') => {
   })
 
   expect(response.headers.get('content-type')).toContain('json')
-  expect(response.status).toBe(200)
   const body = await response.json()
+  expect(response.status).toBe(200)
   expect(body).toBeDefined()
   expect(body.length).toBe(testData.data.length)
 

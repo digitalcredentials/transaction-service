@@ -5,10 +5,13 @@ status](https://img.shields.io/github/actions/workflow/status/digitalcredentials
 [![Coverage
 Status](https://coveralls.io/repos/github/digitalcredentials/transaction-service/badge.svg?branch=main)](https://coveralls.io/github/digitalcredentials/transaction-service?branch=main)
 
-> Express app for managing the transactions used in [VC-API
+> Hono app for managing the transactions used in [VC-API
 > exchanges](https://w3c-ccg.github.io/vc-api/#initiate-exchange).
 
-#### IMPORTANT NOTE ABOUT VERSIONING: If you are using a Docker Hub image of this repository, make sure you are reading the version of this README that corresponds to your Docker Hub version. If, for example, you are using the image `digitalcredentials/transaction-service:0.1.0` then you'll want to use the corresponding tagged repo: [https://github.com/digitalcredentials/transaction-service/tree/v0.1.0](https://github.com/digitalcredentials/transaction-service/tree/v0.1.0). If you are new here, then just read on...
+**IMPORTANT NOTE ABOUT VERSIONING**: If you are using a Docker Hub image of this repository, make
+sure you are reading the version of this README that corresponds to your Docker Hub version. If,
+for example, you are using the image `digitalcredentials/transaction-service:0.1.0` then you'll
+want to use the corresponding tagged repo: [https://github.com/digitalcredentials/transaction-service/tree/v0.1.0](https://github.com/digitalcredentials/transaction-service/tree/v0.1.0). If you are new here, then just read on...
 
 ## Table of Contents
 
@@ -48,6 +51,9 @@ Especially meant to be used as a service within a Docker compose network, initia
 coordinator from within the Docker compose network, and then called externally by a wallet like the
 [Leaner Credential Wallet](https://lcw.app). To that end, a Docker image for this app is published
 to DockerHub to make it easier to wire this into a Docker compose network.
+
+It may be used behind a reverse proxy, and the `DEFAULT_EXCHANGE_HOST` environment variable can be
+used to set the default exchange host, or exchange host values may be passed in at exchange creation time.
 
 ## API
 
@@ -143,6 +149,11 @@ NOTE: the object returned from the initial setup call to the exchanger returns t
 
 At the moment, the [Leaner Credential Wallet](https://lcw.app) only supports the directDeepLink.
 
+- GET /workflows/:workflowId/exchanges/:exchangeId
+
+Returns the exchange data for the given exchangeId and transactionId. If authentication is required,
+an `Authorization` header with a valid tenant `Bearer` token is required.
+
 - GET /healthz
 
 Which is an endpoint typically meant to be called by the Docker
@@ -177,23 +188,45 @@ direct SMTP sends. Gmail can apparently be configured to so so.
 There is a sample .env file provided called .env.example to help you get started with your own .env
 file. The supported fields:
 
+| Key                        | Description                                                                 | Default               | Required |
+| -------------------------- | --------------------------------------------------------------------------- | --------------------- | -------- |
+| `PORT`                     | HTTP port on which to run the express app                                   | 4004                  | no       |
+| `EXCHANGE_HOST`            | Default exchange host to use when constructing the exchange endpoints       | http://localhost:4004 | no       |
+| `EXCHANGE_TTL`             | Time to live for exchanges in seconds                                       | 600 (10 minutes)      | no       |
+| `STATUS_SERVICE`           | URL for the status service. Set to empty string to disable                  | http://localhost:4008 | no       |
+| `SIGNING_SERVICE`          | URL for the signing service                                                 | http://localhost:4006 | no       |
+| `DEFAULT_WORKFLOW`         | Default workflow type to use                                                | didAuth               | no       |
+| `DEFAULT_TENANT_NAME`      | Default tenant name when no tenants are configured                          | default               | no       |
+| `PERSIST_TO_FILE`          | Full local file path to a Keyv data storage file. Priority over `REDIS_URI` | no                    | no       |
+| `REDIS_URI`                | Redis URI for storing exchange data. Use this or `PERSIST_TO_FILE`          | no                    | no       |
+| `KEYV_WRITE_DELAY`         | Delay in milliseconds between writing to keyv and checking for expiration   | 100                   | no       |
+| `KEYV_EXPIRED_CHECK_DELAY` | Delay in milliseconds between checking for expired exchanges                | 14400000 (4 hours)    | no       |
+
+### Tenant Configuration
+
+For multi-tenant setups, you can configure tenants using the following pattern:
+
+| Key Pattern                   | Description                            | Example                               | Required |
+| ----------------------------- | -------------------------------------- | ------------------------------------- | -------- |
+| `TENANT_TOKEN_<tenant_name>`  | Bearer token for the specified tenant  | `TENANT_TOKEN_acme=abc123`            | no       |
+| `TENANT_ORIGIN_<tenant_name>` | Origin domain for the specified tenant | `TENANT_ORIGIN_acme=https://acme.com` | no       |
+
+### Health Check Configuration
+
+Health check may be configured to send emails or post to a webhook when the service is unhealthy.
+See [Health Check](#health-check) for more details.
+
 | Key                            | Description                                                                                 | Default                    | Required |
 | ------------------------------ | ------------------------------------------------------------------------------------------- | -------------------------- | -------- |
-| `PORT`                         | http port on which to run the express app                                                   | 4006                       | no       |
 | `HEALTH_CHECK_SMTP_HOST`       | SMTP host for unhealthy notification emails - see [Health Check](#health-check)             | no                         | no       |
 | `HEALTH_CHECK_SMTP_USER`       | SMTP user for unhealthy notification emails - see [Health Check](#health-check)             | no                         | no       |
 | `HEALTH_CHECK_SMTP_PASS`       | SMTP password for unhealthy notification emails - see [Health Check](#health-check)         | no                         | no       |
-| `HEALTH_CHECK_EMAIL_FROM`      | name of email sender for unhealthy notifications emails - see [Health Check](#health-check) | no                         | no       |
-| `HEALTH_CHECK_EMAIL_RECIPIENT` | recipient when unhealthy - see [Health Check](#health-check)                                | no                         | no       |
-| `HEALTH_CHECK_EMAIL_SUBJECT`   | email subject when unhealthy - see [Health Check](#health-check)                            | no                         | no       |
-| `HEALTH_CHECK_WEB_HOOK`        | posted to when unhealthy - see [Health Check](#health-check)                                | no                         | no       |
-| `HEALTH_CHECK_SERVICE_URL`     | local url for this service - see [Health Check](#health-check)                              | http://SIGNER:4004/healthz | no       |
-| `HEALTH_CHECK_SERVICE_NAME`    | service name to use in error messages - see [Health Check](#health-check)                   | SIGNING-SERVICE            | no       |
-| `DEFAULT_EXCHANGE_HOST`        | default exchange host to use when constructing the exchange endpoints. This or a proxy.     | http://localhost:4005      | no       |
-| `REDIS_URI`                    | Redis URI for storing exchange data. Use this or `PERSIST_TO_FILE` to a Keyv file.          | no                         | no       |
-| `PERSIST_TO_FILE`              | Full local file path to a Keyv data storage file. Priority over `REDIS_URI`.                | false                      | no       |
-| `KEYV_WRITE_DELAY`             | delay in milliseconds between writing to keyv and checking for expiration                   | 50                         | no       |
-| `KEYV_EXPIRED_CHECK_DELAY`     | delay in milliseconds between checking for expired exchanges                                | 1000                       | no       |
+| `HEALTH_CHECK_EMAIL_FROM`      | Name of email sender for unhealthy notifications emails - see [Health Check](#health-check) | no                         | no       |
+| `HEALTH_CHECK_EMAIL_RECIPIENT` | Recipient when unhealthy - see [Health Check](#health-check)                                | no                         | no       |
+| `HEALTH_CHECK_EMAIL_SUBJECT`   | Email subject when unhealthy - see [Health Check](#health-check)                            | no                         | no       |
+| `HEALTH_CHECK_WEB_HOOK`        | Posted to when unhealthy - see [Health Check](#health-check)                                | no                         | no       |
+| `HEALTH_CHECK_SERVICE_URL`     | Local URL for this service - see [Health Check](#health-check)                              | http://SIGNER:4004/healthz | no       |
+| `HEALTH_CHECK_SERVICE_NAME`    | Service name to use in error messages - see [Health Check](#health-check)                   | SIGNING-SERVICE            | no       |
 
 ## Versioning
 

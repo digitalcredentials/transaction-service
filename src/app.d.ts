@@ -1,8 +1,14 @@
 declare global {
   namespace App {
+    interface Tenant {
+      tenantName: string
+      tenantToken: string
+      origin?: string
+    }
+
     interface Config {
       port: number
-      exchangeHost: string
+      defaultExchangeHost: string
       exchangeTtl: number
       statusService: string
       signingService: string
@@ -12,6 +18,8 @@ declare global {
       redisUri?: string
       keyvWriteDelayMs: number
       keyvExpiredCheckDelayMs: number
+      tenants: Record<string, Tenant>
+      tenantAuthenticationEnabled: boolean
     }
 
     interface ErrorResponseBody {
