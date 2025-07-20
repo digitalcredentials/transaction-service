@@ -151,10 +151,8 @@ export const participateInExchange = async ({
         credentialTemplate.template
       )(exchange.variables)
       credential = JSON.parse(builtCredential)
-      console.log(credential)
       credential.credentialSubject.id = data.holder
     } catch (error) {
-      console.log(error)
       throw new HTTPException(400, {
         message: 'Failed to build credential from template'
       })
@@ -175,7 +173,13 @@ export const participateInExchange = async ({
     const verifiablePresentation = createPresentation()
     verifiablePresentation.verifiableCredential = [signedCredential]
 
-    // VC-API indicates we would wrap this in a presentation, but wallet probably doesn't expect that yet.
+    // VC-API indicates we would wrap this in a verifiablePresentation property, but LCW can't handle that.
+    // Should be return {verifiablePresentation}
+    // We will now try a stupid hack to nest it inside the VP
+    verifiablePresentation['verifiablePresentation'] = {
+      ...verifiablePresentation
+    }
+
     return verifiablePresentation
   }
 }
@@ -193,8 +197,8 @@ export const getProtocols = (exchange: App.ExchangeDetail) => {
       exchange.variables.challenge
     }&vc_request_url=${encodeURIComponent(serviceEndpoint)}`,
     verifiablePresentationRequest
-    // TODO: add "oid4vci" support (claim workflow)
-    // TODO: add "oid4vp" support for forthcoming verification workflows
+    // TODO: add "OID4VCI" support (claim workflow)
+    // TODO: add "OID4VP" support for forthcoming verification workflows
   }
   return protocols
 }
