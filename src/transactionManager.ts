@@ -8,7 +8,7 @@ import { KeyvFile } from 'keyv-file'
 import { getConfig } from './config.js'
 
 // The key value store used for transaction data.
-let keyv: Keyv<App.ExchangeDetail>
+let keyv: Keyv<App.ExchangeDetailBase>
 
 /**
  * Intializes the keyv store either in-memory or in file system, according to env.
@@ -17,7 +17,7 @@ export const initializeTransactionManager = () => {
   const config = getConfig()
   if (!keyv) {
     if (config.keyvFilePath) {
-      keyv = new Keyv<App.ExchangeDetail>({
+      keyv = new Keyv<App.ExchangeDetailBase>({
         store: new KeyvFile({
           filename: config.keyvFilePath,
           expiredCheckDelay: config.keyvExpiredCheckDelayMs, // How often to check for and remove expired records
@@ -27,16 +27,19 @@ export const initializeTransactionManager = () => {
         })
       })
     } else if (config.redisUri) {
-      console.log("Using redis backend for Keyv: " + config.redisUri);
-      const hasPort = config.redisUri.includes("6379");
-      keyv = new Keyv<App.ExchangeDetail>(
-        new KeyvRedis({
-          url: hasPort ? config.redisUri : `rediss://${config.redisUri}:6379`,
-          socket: { tls: hasPort ? false : true }
-        }, { namespace: 'exchange' })
+      console.log('Using redis backend for Keyv: ' + config.redisUri)
+      const hasPort = config.redisUri.includes('6379')
+      keyv = new Keyv<App.ExchangeDetailBase>(
+        new KeyvRedis(
+          {
+            url: hasPort ? config.redisUri : `rediss://${config.redisUri}:6379`,
+            socket: { tls: hasPort ? false : true }
+          },
+          { namespace: 'exchange' }
+        )
       )
     } else {
-      keyv = new Keyv<App.ExchangeDetail>()
+      keyv = new Keyv<App.ExchangeDetailBase>()
     }
   }
 }
@@ -61,44 +64,13 @@ export const getExchangeData = async (
  * Sets up one exchange and save it to Keyv. The local exchangeId is used as the key for the
  * record. Success/Failure boolean is returned.
  */
-export const saveExchange = async (data: App.ExchangeDetail) => {
+export const saveExchange = async (data: App.ExchangeDetailBase) => {
   const ttl = new Date(data.expires).getTime() - Date.now() + 1000
   const success = await keyv.set(data.exchangeId, data, ttl)
   if (!success) {
     throw new HTTPException(500, { message: 'Failed to save exchange.' })
   }
   return success
-}
-
-/**
- * This returns the authentication vpr as described in
- * https://w3c-ccg.github.io/vp-request-spec/#did-authentication
- */
-export const getDIDAuthVPR = (exchange: App.ExchangeDetail) => {
-  const serviceEndpoint = `${exchange.variables.exchangeHost}/workflows/${exchange.workflowId}/exchanges/${exchange.exchangeId}`
-
-  return {
-    query: {
-      type: 'DIDAuthentication'
-    },
-    interact: {
-      service: [
-        {
-          type: 'VerifiableCredentialApiExchangeService',
-          serviceEndpoint
-        },
-        {
-          type: 'UnmediatedPresentationService2021',
-          serviceEndpoint
-        },
-        {
-          type: 'CredentialHandlerService'
-        }
-      ]
-    },
-    challenge: exchange.variables.challenge,
-    domain: exchange.variables.exchangeHost
-  }
 }
 
 /**

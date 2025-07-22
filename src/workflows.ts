@@ -34,9 +34,21 @@ const claimWorkflow: App.Workflow = {
   initialStep: 'claim'
 }
 
+const verifyCredentialWorkflow: App.Workflow = {
+  id: 'verify',
+  steps: {
+    verify: {
+      createChallenge: true,
+      verifiablePresentationRequest: { query: [] }
+    }
+  },
+  initialStep: 'verify'
+}
+
 const workflows: Record<string, App.Workflow> = {
   didAuth: didAuthWorkflow,
-  claim: claimWorkflow
+  claim: claimWorkflow,
+  verify: verifyCredentialWorkflow
 }
 
 /**

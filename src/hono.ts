@@ -159,7 +159,10 @@ export const app = new Hono()
     addWorkflowByParam,
     async (c) => {
       const inputData = c.req.valid('json')
+
+      // Initial basic structure validation
       const data = schema.vcApiExchangeCreateSchema.parse(inputData)
+
       const authEnabled = c.var.config.tenantAuthenticationEnabled
       if (
         authEnabled &&
@@ -168,6 +171,7 @@ export const app = new Hono()
       ) {
         throw new HTTPException(401, { message: 'Unauthorized' })
       }
+
       return c.json(
         await createExchangeVcapi({
           data,

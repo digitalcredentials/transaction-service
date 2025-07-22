@@ -63,22 +63,59 @@ declare global {
       }
     }
 
-    interface ExchangeDetail {
+    // TODO: verify with OID4VP
+    interface DcqlQuery {
+      path: string
+      value: string
+    }
+
+    type SupportedWorkflowIds = 'didAuth' | 'claim' | 'verify' | 'healthz'
+    type ExchangeState = 'pending' | 'active' | 'completed' | 'invalid'
+
+    interface BaseVariables {
+      redirectUrl?: string
+      retrievalId?: string
+      exchangeHost: string
+      metadata?: Record<string, unknown>
+      challenge: string // Used to authenticate presentations
+    }
+
+    interface ExchangeDetailBase {
       // Local metadata
       tenantName: string
-      workflowId: string
+      workflowId: SupportedWorkflowIds
 
       // VC-API metadata
       exchangeId: string
       expires: string
-      state: 'pending' | 'active' | 'completed' | 'invalid'
-      variables: {
-        vc?: string
-        redirectUrl?: string
-        retrievalId?: string
-        exchangeHost: string
-        metadata?: Record<string, unknown>
-        challenge: string // Used to authenticate presentations
+      state: ExchangeState
+      variables: BaseVariables
+    }
+
+    interface DcqlClaim {
+      id?: string
+      path: string[]
+      values?: string[]
+    }
+
+    interface ExchangeDetailClaim extends ExchangeDetailBase {
+      workflowId: 'claim'
+      variables: BaseVariables & {
+        vc: string
+      }
+    }
+
+    interface ExchangeDetailDidAuth extends ExchangeDetailBase {
+      workflowId: 'didAuth'
+    }
+
+    interface ExchangeDetailVerify extends ExchangeDetailBase {
+      workflowId: 'verify'
+      variables: BaseVariables & {
+        vprContext: string[]
+        vprCredentialType: string[]
+        trustedIssuers: string[]
+        vprClaims: DcqlClaim[]
       }
     }
 
@@ -90,7 +127,7 @@ declare global {
     }
 
     interface Workflow {
-      id: string
+      id: SupportedWorkflowIds
       steps: Record<string, WorkflowStep>
       initialStep: string
       credentialTemplates?: Array<{

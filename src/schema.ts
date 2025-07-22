@@ -37,7 +37,7 @@ export const credentialDataSchema = z
       'Incomplete exchange data - you must provide either a vc or subjectData'
   })
 
-const optionalFutureDate = (d: string | undefined) => {
+export const optionalFutureDate = (d: string | undefined) => {
   if (!d) {
     return true
   }
@@ -80,20 +80,40 @@ export const exchangeBatchSchema = z
     }
   )
 
+// register all possible variables here
+export const baseVariablesSchema = z.object({
+  exchangeHost: z
+    .string()
+    .optional()
+    .default(process.env.DEFAULT_EXCHANGE_HOST ?? 'http://localhost:4004'),
+  tenantName: z.string({
+    message:
+      'Incomplete exchange data - you must provide a tenant name variable'
+  }),
+  batchId: z.string().optional(),
+  retrievalId: z.string().optional(),
+  metadata: z.any().optional(),
+
+  // claim
+  vc: z.string().optional(),
+
+  // verify
+  vprContext: z.array(z.string()).optional(),
+  vprCredentialType: z.array(z.string()).optional(),
+  trustedIssuers: z.array(z.string()).optional(),
+  vprClaims: z
+    .array(
+      z.object({
+        path: z.array(z.string()),
+        values: z.array(z.string())
+      })
+    )
+    .optional()
+})
+
 export const vcApiExchangeCreateSchema = z.object(
   {
-    variables: z.object({
-      exchangeHost: z
-        .string()
-        .optional()
-        .default(process.env.DEFAULT_EXCHANGE_HOST ?? 'http://localhost:4004'),
-      tenantName: z.string({
-        message:
-          'Incomplete exchange data - you must provide a tenant name variable'
-      }),
-      batchId: z.string().optional(),
-      vc: z.any()
-    }),
+    variables: baseVariablesSchema,
     expires: z.string().datetime().optional().refine(optionalFutureDate, {
       message:
         'Invalid expires date. Must be ISO 8601 format datetime in the future.'

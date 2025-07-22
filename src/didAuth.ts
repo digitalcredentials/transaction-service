@@ -6,6 +6,7 @@ import { Ed25519VerificationKey2020 } from '@digitalbazaar/ed25519-verification-
 import { DataIntegrityProof } from '@digitalbazaar/data-integrity'
 import { cryptosuite as ecdsaRdfc2019Cryptosuite } from '@digitalbazaar/ecdsa-rdfc-2019-cryptosuite'
 import { cryptosuite as eddsaRdfc2022Cryptosuite } from '@digitalbazaar/eddsa-rdfc-2022-cryptosuite'
+import { preparePresentation } from './verifiablePresentation'
 
 const documentLoader = securityLoader().build()
 
@@ -54,8 +55,10 @@ export const verifyDIDAuth = async ({
   presentation: unknown
   challenge: string
 }) => {
+  const refinedPresentation = preparePresentation(presentation)
+
   const result = await verify({
-    presentation,
+    presentation: refinedPresentation,
     challenge,
     suite: verificationSuite,
     documentLoader

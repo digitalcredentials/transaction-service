@@ -274,8 +274,9 @@ describe('api', function () {
       const response = await client.healthz.$get()
 
       expect(response.headers.get('content-type')).toContain('json')
-      expect(response.status).toBe(200)
       const body = await response.json()
+      expect(response.status).toBe(200)
+
       expect(body).toEqual({
         message: 'transaction-service server status: ok.',
         healthy: true
@@ -352,7 +353,7 @@ describe('api', function () {
       expect(exchangeResponse.status).toBe(401)
       expect(body).toBeDefined()
       expect(body.code).toBe(401)
-      expect(body.message).toBe('Invalid DIDAuth.')
+      expect(body.message).toBe('Invalid DIDAuth or unsupported options.')
     })
 
     test('does the VPR exchange for DID Auth', async function () {
@@ -372,7 +373,8 @@ describe('api', function () {
         method: 'POST' // empty body to initiate a VC-API exchange
       })
       expect(initiationResponse.headers.get('content-type')).toContain('json')
-      const vpr = (await initiationResponse.json()) as App.VPR
+      const vpr = (await initiationResponse.json())
+        ?.verifiablePresentationRequest as App.VPR
       expect(initiationResponse.status).toBe(200)
 
       expect(vpr).toBeDefined()
@@ -423,7 +425,8 @@ describe('api', function () {
         method: 'POST'
       })
       expect(initiationResponse.headers.get('content-type')).toContain('json')
-      const vpr = (await initiationResponse.json()) as App.VPR
+      const vpr = (await initiationResponse.json())
+        ?.verifiablePresentationRequest as App.VPR
       expect(initiationResponse.status).toBe(200)
       expect(vpr).toBeDefined()
 

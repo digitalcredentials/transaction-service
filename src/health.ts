@@ -17,13 +17,14 @@ export const healthCheck = async (c: Context) => {
         challenge: ''
       }
     })
+
     if (!success) {
       throw new Error('Failed to save exchange to Keyv')
     }
 
     // Wait double the write delay to ensure the exchange is persisted
     await new Promise((resolve) =>
-      setTimeout(resolve, 2 * config.keyvWriteDelayMs)
+      setTimeout(resolve, 4 * config.keyvWriteDelayMs)
     )
     const result = await getExchangeData(`healthz-${timestamp}`, 'healthz')
     if (!result) {
