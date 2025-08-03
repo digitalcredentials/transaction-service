@@ -3,7 +3,10 @@ import { expect } from 'chai'
 import request from 'supertest'
 import crypto from 'crypto'
 import { build } from './app.js'
-import { getDataForExchangeSetupPost, testVC } from './test-fixtures/testData.js'
+import {
+  getDataForExchangeSetupPost,
+  testVC
+} from './test-fixtures/testData.js'
 import { getSignedDIDAuth } from './didAuth.js'
 import {
   clearKeyv,
@@ -46,49 +49,33 @@ describe('api', function () {
     it('returns array of wallet queries', async function () {
       const testData = getDataForExchangeSetupPost('test')
       const response = await request(app).post('/exchange').send(testData)
-
       expect(response.header['content-type']).to.have.string('json')
       expect(response.status).to.eql(200)
       expect(response.body)
       expect(response.body.length).to.eql(testData.data.length)
-    })
-
-    it('returns array of wallet queries', async () => {
-      const testData = getDataForExchangeSetupPost('test')
-      const response = await request(app)
-        .post("/exchange")
-        .send(testData)
-      expect(response.header["content-type"]).to.have.string("json");
-      expect(response.status).to.eql(200);
-      expect(response.body)
-      expect(response.body.length).to.eql(testData.data.length)
 
       const walletQuerys = response.body
-      const walletQuery = walletQuerys.find(q => q.retrievalId === 'someId')
+      const walletQuery = walletQuerys.find((q) => q.retrievalId === 'someId')
       const url = walletQuery.directDeepLink
 
       const parsedDeepLink = new URL(url)
-      const requestURI = parsedDeepLink.searchParams.get('vc_request_url'); //should be http://localhost:4004/exchange?challenge=VOclS8ZiMs&auth_type=bearer
+      const requestURI = parsedDeepLink.searchParams.get('vc_request_url') //should be http://localhost:4004/exchange?challenge=VOclS8ZiMs&auth_type=bearer
       // here we need to pull out just the path
       // since we are calling the endpoint via
       // supertest
-      const path = (new URL(requestURI)).pathname
-      const challenge = parsedDeepLink.searchParams.get('challenge'); // the challenge that the exchange service generated 
+      const path = new URL(requestURI).pathname
+      const challenge = parsedDeepLink.searchParams.get('challenge') // the challenge that the exchange service generated
       const didAuth = await getSignedDIDAuth('did:ex:223234', challenge)
 
-      const exchangeResponse = await request(app)
-        .post(path)
-        .send(didAuth)
+      const exchangeResponse = await request(app).post(path).send(didAuth)
 
-      expect(exchangeResponse.header["content-type"]).to.have.string("json");
-      expect(exchangeResponse.status).to.eql(200);
+      expect(exchangeResponse.header['content-type']).to.have.string('json')
+      expect(exchangeResponse.status).to.eql(200)
       expect(exchangeResponse.body)
 
       const signedVC = exchangeResponse.body.vc
       expect(signedVC).to.eql(testVC)
-
     })
-
 
     it('returns error if missing exchangeHost', async function () {
       const testData = getDataForExchangeSetupPost('test')
@@ -238,6 +225,45 @@ describe('api', function () {
       verifyReturnedData(exchangeResponse)
     })
 
+    it('removes exchange if deleteWhenCollected is true', async function () {
+      const deleteWhenCollected = true
+      const { path, challenge } = await doSetupWithDirectDeepLink(
+        app,
+        deleteWhenCollected
+      )
+      const didAuth = await getSignedDIDAuth('did:ex:223234', challenge)
+      const exchangeResponse = await request(app).post(path).send(didAuth)
+      verifyReturnedData(exchangeResponse)
+      // now try calling again - should throw error
+      const secondExchangeRsponse = await request(app).post(path).send(didAuth)
+      expect(secondExchangeRsponse.status).to.eql(404)
+    })
+
+    it('leaves exchange if deleteWhenCollected is false', async function () {
+      const deleteWhenCollected = false
+      const { path, challenge } = await doSetupWithDirectDeepLink(
+        app,
+        deleteWhenCollected
+      )
+      const didAuth = await getSignedDIDAuth('did:ex:223234', challenge)
+      const exchangeResponse = await request(app).post(path).send(didAuth)
+      verifyReturnedData(exchangeResponse)
+      // now try calling again - should return ok
+      const secondExchangeRsponse = await request(app).post(path).send(didAuth)
+      verifyReturnedData(secondExchangeRsponse)
+    })
+
+    it('leaves exchange if deleteWhenCollected is missing', async function () {
+      //const deleteWhenCollected = false;
+      const { path, challenge } = await doSetupWithDirectDeepLink(app)
+      const didAuth = await getSignedDIDAuth('did:ex:223234', challenge)
+      const exchangeResponse = await request(app).post(path).send(didAuth)
+      verifyReturnedData(exchangeResponse)
+      // now try calling again - should return ok
+      const secondExchangeRsponse = await request(app).post(path).send(didAuth)
+      verifyReturnedData(secondExchangeRsponse)
+    })
+
     it('returns error for bad didAuth', async function () {
       const { path } = await doSetupWithDirectDeepLink(app)
       // use a different challenge than was issued
@@ -291,8 +317,13 @@ describe('api', function () {
   })
 })
 
-const doSetup = async (app) => {
-  const testData = getDataForExchangeSetupPost('test')
+const doSetup = async (app, deleteWhenCollected) => {
+  const testData = getDataForExchangeSetupPost(
+    'test',
+    'http://localhost:4005',
+    deleteWhenCollected
+  )
+
   const response = await request(app).post('/exchange').send(testData)
 
   expect(response.header['content-type']).to.have.string('json')
@@ -305,8 +336,8 @@ const doSetup = async (app) => {
   return walletQuery
 }
 
-const doSetupWithDirectDeepLink = async (app) => {
-  const walletQuery = await doSetup(app)
+const doSetupWithDirectDeepLink = async (app, deleteWhenCollected) => {
+  const walletQuery = await doSetup(app, deleteWhenCollected)
   const url = walletQuery.directDeepLink
 
   const parsedDeepLink = new URL(url)
