@@ -5,7 +5,7 @@
 
 > Express app for managing the transactions used in [VC-API exchanges](https://w3c-ccg.github.io/vc-api/#initiate-exchange).
 
-#### IMPORTANT NOTE ABOUT VERSIONING: If you are using a Docker Hub image of this repository, make sure you are reading the version of this README that corresponds to your Docker Hub version.  If, for example, you are using the image `digitalcredentials/transaction-service:0.1.0` then you'll want to use the corresponding tagged repo: [https://github.com/digitalcredentials/transaction-service/tree/v0.1.0](https://github.com/digitalcredentials/transaction-service/tree/v0.1.0). If you are new here, then just read on...
+#### IMPORTANT NOTE ABOUT VERSIONING: If you are using a Docker Hub image of this repository, make sure you are reading the version of this README that corresponds to your Docker Hub version.  If, for example, you are using the image `digitalcredentials/transaction-service:0.4.0` then you'll want to use the corresponding tagged repo: [https://github.com/digitalcredentials/transaction-service/tree/v0.4.0](https://github.com/digitalcredentials/transaction-service/tree/v0.4.0). If you are new here, then just read on...
 
 ## Table of Contents
 
@@ -45,11 +45,15 @@ Initializes the exchange for an array of [Verifiable Credentials](https://www.w3
     data: [
        {
           vc: "an unsigned populated Verifiable Credential",
-          retrievalId: "an ID to later use to select the generated VPR/deeplink for this credential"
+          retrievalId: "an ID to later use to select the generated VPR/deeplink for this credential",
+          deleteWhenCollected: true/false,
+          timeToLive: 100000 
        },
        {
           vc: "another unsigned populated Verifiable Credential",
-          retrievalId: "another ID to later use to select the generated VPR/deeplink for this credential"
+          retrievalId: "another ID to later use to select the generated VPR/deeplink for this credential",
+          deleteWhenCollected: true/false,
+          timeToLive: 100000 
        },
         ... however many other credentials to setup an exchange for
     ]
@@ -57,6 +61,13 @@ Initializes the exchange for an array of [Verifiable Credentials](https://www.w3
  ```
 
  The endpoint stores the data in a key/value store along with newly generated UUIDs for the exchangeId, transactionId and a challenge to be used later for a [DIDAuthentication Verifiable Presentation Request](https://w3c-ccg.github.io/vp-request-spec/#did-authentication).
+
+ Note that the timeToLive determines how long the exchange remains available. After the timeToLive has expired the exchange is removed from
+ the key/value store.
+
+ Note that when deleteWhenCollected is set to true the exchange is removed immediately after the first time it is retrieved. This
+ prevents the exchange from being used more than once, i.e, prevents the
+ associated credential from being collected twice.
 
  The endpoint returns an object with two options for opening a wallet: a custom deeplink that will open the Learner Credential Wallet and a [CHAPI}(https://chapi.io) request that can be used to open a [CHAPI}(https://chapi.io) enabled wallet. In both cases the deeplink or chapi request will prompt the wallet to submit a DID Authenticaion to the exchange endpoint, which will return the signed credential.
 
