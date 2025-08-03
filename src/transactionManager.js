@@ -165,6 +165,9 @@ export const retrieveStoredData = async (
   })
   const transactionIdMatches = transactionId === storedData.transactionId
   if (didAuthVerified && transactionIdMatches) {
+    if (storedData.deleteWhenCollected === true) {
+      removeExchangeData(exchangeId)
+    }
     return storedData
   } else {
     throw new ExchangeError(401, 'Invalid DIDAuth.')
@@ -176,10 +179,18 @@ export const retrieveStoredData = async (
  * @throws {ExchangeError} Unknown exchangeID
  * @returns returns stored data if exchangeId exists
  */
-const getExchangeData = async (exchangeId) => {
+export const getExchangeData = async (exchangeId) => {
   const storedData = await keyv.get(exchangeId)
   if (!storedData) throw new ExchangeError(404, 'Unknown exchangeId.')
   return storedData
+}
+
+/**
+ * @param {string} exchangeId
+ * Removes the exchange from keyv
+ */
+const removeExchangeData = async (exchangeId) => {
+  await keyv.delete(exchangeId)
 }
 
 /**
