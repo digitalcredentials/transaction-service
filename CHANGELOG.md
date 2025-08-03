@@ -1,5 +1,11 @@
 # transaction-manager-service Changelog
 
+## 0.4.0 - 2025-08-04
+
+### Added
+
+- added deleteWhenCollected option to delete exchange on collection
+
 ## 0.3.0 - 2024-11-25
 
 ### Changed
